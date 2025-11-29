@@ -1,0 +1,11 @@
+[project]
+name = "partsbox-mcp"
+version = "0.1.0"
+description = "PartsBox MCP Server for parts inventory management"
+dependencies = [
+    "fastmcp",
+    "requests",
+    "python-dotenv",
+    "jmespath",
+]
+requires-python = ">=3.10"
