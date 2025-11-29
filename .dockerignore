@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Documentation
+README.md
+
+# Docker files
+Dockerfile
+docker-compose.yml
+docker-compose.devcontainer.yml
+.dockerignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/

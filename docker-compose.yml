@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  partsbox-mcp:
+    build:
+      context: .
+      args:
+        INSTALL_MCP: true
+    image: partsbox-mcp:latest
+    container_name: partsbox-mcp-server
+    stdin_open: true
+    tty: true
+    environment:
+      - PARTSBOX_API_KEY=${PARTSBOX_API_KEY}
+    env_file:
+      - .env

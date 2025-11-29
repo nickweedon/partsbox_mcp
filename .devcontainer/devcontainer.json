@@ -1,0 +1,40 @@
+{
+  "name": "PartsBox MCP Development Container",
+
+  // Use docker-compose for DevContainer
+  "dockerComposeFile": "../docker-compose.devcontainer.yml",
+  "service": "partsbox-mcp-vscode",
+
+  // Set the default user for VS Code
+  "remoteUser": "root",
+
+  // Working directory inside the container
+  "workspaceFolder": "/workspace",
+
+  // Forward ports (add any ports your application needs)
+  "forwardPorts": [],
+
+  // Install VS Code extensions automatically in the container
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "charliermarsh.ruff",
+        "anthropic.claude-code"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/root/.local/bin/uv",
+        "python.terminal.activateEnvironment": true,
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  // Run commands after container creation
+  "postCreateCommand": "cd /workspace && uv sync",
+
+  // Features to add
+  "features": {}
+}
