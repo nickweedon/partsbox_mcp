@@ -258,10 +258,10 @@ query="sort_by([?stock > `0`], &name)"
 
 ```mermaid
 flowchart LR
-    A[Cached Data<br/>5000 items] --> B[JMESPath Query<br/>"&#91;?stock > 100&#93;.&#123;name,stock&#125;"]
-    B --> C[Query Result<br/>500 items]
-    C --> D[Paginate<br/>offset=0, limit=20]
-    D --> E[Final Response<br/>20 items]
+    A[Cached Data\n5000 items] --> B[JMESPath Query]
+    B --> C[Query Result\n500 items]
+    C --> D[Paginate\noffset=0, limit=20]
+    D --> E[Final Response\n20 items]
 ```
 
 The query is applied first to the full cached dataset, then pagination is applied to the result.
