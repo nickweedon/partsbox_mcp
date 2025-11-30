@@ -7,6 +7,7 @@ This module provides:
 - Fixtures for pytest
 """
 
+import json
 import time
 from typing import Any
 
@@ -17,7 +18,6 @@ import responses
 # =============================================================================
 
 # Realistic part data based on real PartsBox API responses
-# Format validated against actual API on 2024-01-23
 SAMPLE_PARTS: list[dict[str, Any]] = [
     {
         "part/id": "part_001",
@@ -118,6 +118,230 @@ SAMPLE_PARTS: list[dict[str, Any]] = [
     },
 ]
 
+# Sample storage locations
+SAMPLE_STORAGE: list[dict[str, Any]] = [
+    {
+        "storage/id": "loc_001",
+        "storage/name": "Drawer A1",
+        "storage/parent-id": None,
+        "storage/path": "Drawer A1",
+        "storage/archived": False,
+        "storage/created": 1700000000000,
+        "storage/comments": "SMD Resistors",
+        "storage/tags": ["resistors"],
+    },
+    {
+        "storage/id": "loc_002",
+        "storage/name": "Drawer A2",
+        "storage/parent-id": None,
+        "storage/path": "Drawer A2",
+        "storage/archived": False,
+        "storage/created": 1700000000000,
+        "storage/comments": "SMD Capacitors",
+        "storage/tags": ["capacitors"],
+    },
+    {
+        "storage/id": "loc_003",
+        "storage/name": "Module Shelf",
+        "storage/parent-id": None,
+        "storage/path": "Module Shelf",
+        "storage/archived": False,
+        "storage/created": 1700000000000,
+        "storage/comments": "MCU Modules",
+        "storage/tags": ["modules", "mcu"],
+    },
+    {
+        "storage/id": "loc_archived",
+        "storage/name": "Old Storage",
+        "storage/parent-id": None,
+        "storage/path": "Old Storage",
+        "storage/archived": True,
+        "storage/created": 1699000000000,
+        "storage/comments": "Archived location",
+        "storage/tags": [],
+    },
+]
+
+# Sample lots
+SAMPLE_LOTS: list[dict[str, Any]] = [
+    {
+        "lot/id": "lot_001",
+        "lot/name": "Batch 2024-01",
+        "lot/description": "January 2024 procurement",
+        "lot/part-id": "part_001",
+        "lot/storage-id": "loc_001",
+        "lot/quantity": 500,
+        "lot/created": 1700000000000,
+        "lot/expiration-date": None,
+        "lot/tags": ["2024", "batch"],
+        "lot/comments": "Initial stock",
+    },
+    {
+        "lot/id": "lot_002",
+        "lot/name": "Batch 2024-02",
+        "lot/description": "February 2024 procurement",
+        "lot/part-id": "part_002",
+        "lot/storage-id": "loc_002",
+        "lot/quantity": 1000,
+        "lot/created": 1700000100000,
+        "lot/expiration-date": 1800000000000,
+        "lot/tags": ["2024", "batch"],
+        "lot/comments": "With expiration",
+    },
+    {
+        "lot/id": "lot_003",
+        "lot/name": "ESP32 Lot",
+        "lot/description": "ESP32 modules",
+        "lot/part-id": "part_003",
+        "lot/storage-id": "loc_003",
+        "lot/quantity": 25,
+        "lot/created": 1700000200000,
+        "lot/expiration-date": None,
+        "lot/tags": ["modules"],
+        "lot/comments": "",
+    },
+]
+
+# Sample projects
+SAMPLE_PROJECTS: list[dict[str, Any]] = [
+    {
+        "project/id": "proj_001",
+        "project/name": "Arduino Shield v1",
+        "project/description": "Custom Arduino shield project",
+        "project/created": 1700000000000,
+        "project/updated": 1700000500000,
+        "project/archived": False,
+        "project/comments": "Main project",
+        "project/entry-count": 3,
+    },
+    {
+        "project/id": "proj_002",
+        "project/name": "ESP32 Board",
+        "project/description": "ESP32 development board",
+        "project/created": 1700000100000,
+        "project/updated": 1700000600000,
+        "project/archived": False,
+        "project/comments": "",
+        "project/entry-count": 2,
+    },
+    {
+        "project/id": "proj_archived",
+        "project/name": "Old Project",
+        "project/description": "Archived project",
+        "project/created": 1699000000000,
+        "project/updated": 1699000000000,
+        "project/archived": True,
+        "project/comments": "",
+        "project/entry-count": 0,
+    },
+]
+
+# Sample project entries
+SAMPLE_PROJECT_ENTRIES: dict[str, list[dict[str, Any]]] = {
+    "proj_001": [
+        {
+            "entry/id": "entry_001",
+            "entry/part-id": "part_001",
+            "entry/quantity": 10,
+            "entry/designators": "R1, R2, R3, R4, R5, R6, R7, R8, R9, R10",
+            "entry/comments": "",
+        },
+        {
+            "entry/id": "entry_002",
+            "entry/part-id": "part_002",
+            "entry/quantity": 5,
+            "entry/designators": "C1, C2, C3, C4, C5",
+            "entry/comments": "Decoupling caps",
+        },
+        {
+            "entry/id": "entry_003",
+            "entry/part-id": "part_005",
+            "entry/quantity": 2,
+            "entry/designators": "D1, D2",
+            "entry/comments": "Status LEDs",
+        },
+    ],
+    "proj_002": [
+        {
+            "entry/id": "entry_004",
+            "entry/part-id": "part_003",
+            "entry/quantity": 1,
+            "entry/designators": "U1",
+            "entry/comments": "Main MCU",
+        },
+        {
+            "entry/id": "entry_005",
+            "entry/part-id": "part_002",
+            "entry/quantity": 10,
+            "entry/designators": "C1-C10",
+            "entry/comments": "",
+        },
+    ],
+}
+
+# Sample builds
+SAMPLE_BUILDS: dict[str, list[dict[str, Any]]] = {
+    "proj_001": [
+        {
+            "build/id": "build_001",
+            "build/project-id": "proj_001",
+            "build/quantity": 5,
+            "build/created": 1700000500000,
+            "build/comments": "First build",
+        },
+    ],
+    "proj_002": [],
+}
+
+# Sample orders
+SAMPLE_ORDERS: list[dict[str, Any]] = [
+    {
+        "order/id": "order_001",
+        "order/vendor": "Mouser Electronics",
+        "order/number": "MO-12345",
+        "order/status": "open",
+        "order/created": 1700000000000,
+        "order/comments": "Monthly restock",
+    },
+    {
+        "order/id": "order_002",
+        "order/vendor": "DigiKey",
+        "order/number": "DK-67890",
+        "order/status": "received",
+        "order/created": 1699500000000,
+        "order/comments": "ESP32 order",
+    },
+]
+
+# Sample order entries
+SAMPLE_ORDER_ENTRIES: dict[str, list[dict[str, Any]]] = {
+    "order_001": [
+        {
+            "entry/id": "oentry_001",
+            "entry/part-id": "part_001",
+            "entry/quantity": 1000,
+            "entry/price": 0.008,
+            "entry/currency": "usd",
+        },
+        {
+            "entry/id": "oentry_002",
+            "entry/part-id": "part_002",
+            "entry/quantity": 2000,
+            "entry/price": 0.015,
+            "entry/currency": "usd",
+        },
+    ],
+    "order_002": [
+        {
+            "entry/id": "oentry_003",
+            "entry/part-id": "part_003",
+            "entry/quantity": 25,
+            "entry/price": 3.00,
+            "entry/currency": "usd",
+        },
+    ],
+}
+
 
 def get_sample_parts() -> list[dict[str, Any]]:
     """Return a copy of sample parts data."""
@@ -130,6 +354,26 @@ def get_sample_part(part_id: str) -> dict[str, Any] | None:
         if part["part/id"] == part_id:
             return part.copy()
     return None
+
+
+def get_sample_storage() -> list[dict[str, Any]]:
+    """Return a copy of sample storage data."""
+    return [s.copy() for s in SAMPLE_STORAGE]
+
+
+def get_sample_lots() -> list[dict[str, Any]]:
+    """Return a copy of sample lots data."""
+    return [lot.copy() for lot in SAMPLE_LOTS]
+
+
+def get_sample_projects() -> list[dict[str, Any]]:
+    """Return a copy of sample projects data."""
+    return [p.copy() for p in SAMPLE_PROJECTS]
+
+
+def get_sample_orders() -> list[dict[str, Any]]:
+    """Return a copy of sample orders data."""
+    return [o.copy() for o in SAMPLE_ORDERS]
 
 
 # =============================================================================
@@ -172,8 +416,22 @@ class FakePartsBoxAPI:
 
     BASE_URL = "https://api.partsbox.com/api/1"
 
-    def __init__(self, parts: list[dict[str, Any]] | None = None):
+    def __init__(
+        self,
+        parts: list[dict[str, Any]] | None = None,
+        storage: list[dict[str, Any]] | None = None,
+        lots: list[dict[str, Any]] | None = None,
+        projects: list[dict[str, Any]] | None = None,
+        orders: list[dict[str, Any]] | None = None,
+    ):
         self._parts = parts if parts is not None else get_sample_parts()
+        self._storage = storage if storage is not None else get_sample_storage()
+        self._lots = lots if lots is not None else get_sample_lots()
+        self._projects = projects if projects is not None else get_sample_projects()
+        self._orders = orders if orders is not None else get_sample_orders()
+        self._project_entries = {k: [e.copy() for e in v] for k, v in SAMPLE_PROJECT_ENTRIES.items()}
+        self._builds = {k: [b.copy() for b in v] for k, v in SAMPLE_BUILDS.items()}
+        self._order_entries = {k: [e.copy() for e in v] for k, v in SAMPLE_ORDER_ENTRIES.items()}
         self._mock = responses.RequestsMock(assert_all_requests_are_fired=False)
 
     def __enter__(self) -> "FakePartsBoxAPI":
@@ -187,15 +445,13 @@ class FakePartsBoxAPI:
 
     def _setup_endpoints(self) -> None:
         """Set up all mock endpoints."""
-        # part/all endpoint
+        # Part endpoints
         self._mock.add(
             responses.POST,
             f"{self.BASE_URL}/part/all",
             json=build_success_response(self._parts),
             status=200,
         )
-
-        # part/get endpoint - uses callback for dynamic response
         self._mock.add_callback(
             responses.POST,
             f"{self.BASE_URL}/part/get",
@@ -203,12 +459,230 @@ class FakePartsBoxAPI:
             content_type="application/json",
         )
 
-    def _handle_part_get(
-        self, request: Any
-    ) -> tuple[int, dict[str, str], str]:
-        """Handle part/get requests dynamically."""
-        import json
+        # Stock endpoints
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/stock/add",
+            callback=self._handle_stock_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/stock/remove",
+            callback=self._handle_stock_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/stock/move",
+            callback=self._handle_stock_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/stock/update",
+            callback=self._handle_stock_operation,
+            content_type="application/json",
+        )
 
+        # Lot endpoints
+        self._mock.add(
+            responses.POST,
+            f"{self.BASE_URL}/lot/all",
+            json=build_success_response(self._lots),
+            status=200,
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/lot/get",
+            callback=self._handle_lot_get,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/lot/update",
+            callback=self._handle_lot_update,
+            content_type="application/json",
+        )
+
+        # Storage endpoints
+        self._mock.add(
+            responses.POST,
+            f"{self.BASE_URL}/storage/all",
+            json=build_success_response(self._storage),
+            status=200,
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/storage/get",
+            callback=self._handle_storage_get,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/storage/update",
+            callback=self._handle_storage_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/storage/rename",
+            callback=self._handle_storage_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/storage/archive",
+            callback=self._handle_storage_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/storage/restore",
+            callback=self._handle_storage_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/storage/parts",
+            callback=self._handle_storage_parts,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/storage/lots",
+            callback=self._handle_storage_lots,
+            content_type="application/json",
+        )
+
+        # Project endpoints
+        self._mock.add(
+            responses.POST,
+            f"{self.BASE_URL}/project/all",
+            json=build_success_response(self._projects),
+            status=200,
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/get",
+            callback=self._handle_project_get,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/create",
+            callback=self._handle_project_create,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/update",
+            callback=self._handle_project_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/delete",
+            callback=self._handle_project_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/archive",
+            callback=self._handle_project_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/restore",
+            callback=self._handle_project_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/get-entries",
+            callback=self._handle_project_entries,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/add-entries",
+            callback=self._handle_project_modify_entries,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/update-entries",
+            callback=self._handle_project_modify_entries,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/delete-entries",
+            callback=self._handle_project_modify_entries,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/project/get-builds",
+            callback=self._handle_project_builds,
+            content_type="application/json",
+        )
+
+        # Build endpoints
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/build/get",
+            callback=self._handle_build_get,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/build/update",
+            callback=self._handle_build_update,
+            content_type="application/json",
+        )
+
+        # Order endpoints
+        self._mock.add(
+            responses.POST,
+            f"{self.BASE_URL}/order/all",
+            json=build_success_response(self._orders),
+            status=200,
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/order/get",
+            callback=self._handle_order_get,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/order/create",
+            callback=self._handle_order_create,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/order/get-entries",
+            callback=self._handle_order_entries,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/order/add-entries",
+            callback=self._handle_order_add_entries,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/order/receive",
+            callback=self._handle_order_receive,
+            content_type="application/json",
+        )
+
+    def _handle_part_get(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle part/get requests dynamically."""
         try:
             body = json.loads(request.body)
             part_id = body.get("part/id")
@@ -229,6 +703,350 @@ class FakePartsBoxAPI:
                 {},
                 json.dumps(build_error_response(f"Part not found: {part_id}")),
             )
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_stock_operation(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle stock operations (add/remove/move/update)."""
+        try:
+            body = json.loads(request.body)
+            # Return the body as confirmation of what was received
+            return (200, {}, json.dumps(build_success_response(body)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_lot_get(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle lot/get requests."""
+        try:
+            body = json.loads(request.body)
+            lot_id = body.get("lot/id")
+
+            if not lot_id:
+                return (400, {}, json.dumps(build_error_response("lot/id is required")))
+
+            for lot in self._lots:
+                if lot["lot/id"] == lot_id:
+                    return (200, {}, json.dumps(build_success_response(lot)))
+
+            return (404, {}, json.dumps(build_error_response(f"Lot not found: {lot_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_lot_update(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle lot/update requests."""
+        try:
+            body = json.loads(request.body)
+            lot_id = body.get("lot/id")
+
+            if not lot_id:
+                return (400, {}, json.dumps(build_error_response("lot/id is required")))
+
+            for lot in self._lots:
+                if lot["lot/id"] == lot_id:
+                    # Update fields
+                    if "lot/name" in body:
+                        lot["lot/name"] = body["lot/name"]
+                    if "lot/description" in body:
+                        lot["lot/description"] = body["lot/description"]
+                    return (200, {}, json.dumps(build_success_response(lot)))
+
+            return (404, {}, json.dumps(build_error_response(f"Lot not found: {lot_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_storage_get(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle storage/get requests."""
+        try:
+            body = json.loads(request.body)
+            storage_id = body.get("storage/id")
+
+            if not storage_id:
+                return (400, {}, json.dumps(build_error_response("storage/id is required")))
+
+            for loc in self._storage:
+                if loc["storage/id"] == storage_id:
+                    return (200, {}, json.dumps(build_success_response(loc)))
+
+            return (404, {}, json.dumps(build_error_response(f"Storage not found: {storage_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_storage_operation(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle storage modification operations."""
+        try:
+            body = json.loads(request.body)
+            storage_id = body.get("storage/id")
+
+            if not storage_id:
+                return (400, {}, json.dumps(build_error_response("storage/id is required")))
+
+            for loc in self._storage:
+                if loc["storage/id"] == storage_id:
+                    return (200, {}, json.dumps(build_success_response(loc)))
+
+            return (404, {}, json.dumps(build_error_response(f"Storage not found: {storage_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_storage_parts(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle storage/parts requests."""
+        try:
+            body = json.loads(request.body)
+            storage_id = body.get("storage/id")
+
+            if not storage_id:
+                return (400, {}, json.dumps(build_error_response("storage/id is required")))
+
+            # Return parts that have stock in this storage location
+            parts_in_storage = []
+            for part in self._parts:
+                for stock in part.get("part/stock", []):
+                    if stock.get("stock/storage-id") == storage_id:
+                        parts_in_storage.append({
+                            "part/id": part["part/id"],
+                            "part/name": part["part/name"],
+                            "stock/quantity": stock["stock/quantity"],
+                        })
+
+            return (200, {}, json.dumps(build_success_response(parts_in_storage)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_storage_lots(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle storage/lots requests."""
+        try:
+            body = json.loads(request.body)
+            storage_id = body.get("storage/id")
+
+            if not storage_id:
+                return (400, {}, json.dumps(build_error_response("storage/id is required")))
+
+            # Return lots in this storage location
+            lots_in_storage = [
+                lot for lot in self._lots
+                if lot.get("lot/storage-id") == storage_id
+            ]
+
+            return (200, {}, json.dumps(build_success_response(lots_in_storage)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_project_get(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle project/get requests."""
+        try:
+            body = json.loads(request.body)
+            project_id = body.get("project/id")
+
+            if not project_id:
+                return (400, {}, json.dumps(build_error_response("project/id is required")))
+
+            for proj in self._projects:
+                if proj["project/id"] == project_id:
+                    return (200, {}, json.dumps(build_success_response(proj)))
+
+            return (404, {}, json.dumps(build_error_response(f"Project not found: {project_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_project_create(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle project/create requests."""
+        try:
+            body = json.loads(request.body)
+            name = body.get("project/name")
+
+            if not name:
+                return (400, {}, json.dumps(build_error_response("project/name is required")))
+
+            new_project = {
+                "project/id": f"proj_{int(time.time())}",
+                "project/name": name,
+                "project/description": body.get("project/description", ""),
+                "project/created": int(time.time() * 1000),
+                "project/updated": int(time.time() * 1000),
+                "project/archived": False,
+                "project/comments": body.get("project/comments", ""),
+                "project/entry-count": 0,
+            }
+            self._projects.append(new_project)
+            return (200, {}, json.dumps(build_success_response(new_project)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_project_operation(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle project modification operations."""
+        try:
+            body = json.loads(request.body)
+            project_id = body.get("project/id")
+
+            if not project_id:
+                return (400, {}, json.dumps(build_error_response("project/id is required")))
+
+            for proj in self._projects:
+                if proj["project/id"] == project_id:
+                    return (200, {}, json.dumps(build_success_response(proj)))
+
+            return (404, {}, json.dumps(build_error_response(f"Project not found: {project_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_project_entries(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle project/get-entries requests."""
+        try:
+            body = json.loads(request.body)
+            project_id = body.get("project/id")
+
+            if not project_id:
+                return (400, {}, json.dumps(build_error_response("project/id is required")))
+
+            entries = self._project_entries.get(project_id, [])
+            return (200, {}, json.dumps(build_success_response(entries)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_project_modify_entries(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle project entry modification requests."""
+        try:
+            body = json.loads(request.body)
+            project_id = body.get("project/id")
+
+            if not project_id:
+                return (400, {}, json.dumps(build_error_response("project/id is required")))
+
+            return (200, {}, json.dumps(build_success_response({"status": "ok"})))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_project_builds(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle project/get-builds requests."""
+        try:
+            body = json.loads(request.body)
+            project_id = body.get("project/id")
+
+            if not project_id:
+                return (400, {}, json.dumps(build_error_response("project/id is required")))
+
+            builds = self._builds.get(project_id, [])
+            return (200, {}, json.dumps(build_success_response(builds)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_build_get(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle build/get requests."""
+        try:
+            body = json.loads(request.body)
+            build_id = body.get("build/id")
+
+            if not build_id:
+                return (400, {}, json.dumps(build_error_response("build/id is required")))
+
+            for builds in self._builds.values():
+                for build in builds:
+                    if build["build/id"] == build_id:
+                        return (200, {}, json.dumps(build_success_response(build)))
+
+            return (404, {}, json.dumps(build_error_response(f"Build not found: {build_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_build_update(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle build/update requests."""
+        try:
+            body = json.loads(request.body)
+            build_id = body.get("build/id")
+
+            if not build_id:
+                return (400, {}, json.dumps(build_error_response("build/id is required")))
+
+            for builds in self._builds.values():
+                for build in builds:
+                    if build["build/id"] == build_id:
+                        if "build/comments" in body:
+                            build["build/comments"] = body["build/comments"]
+                        return (200, {}, json.dumps(build_success_response(build)))
+
+            return (404, {}, json.dumps(build_error_response(f"Build not found: {build_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_order_get(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle order/get requests."""
+        try:
+            body = json.loads(request.body)
+            order_id = body.get("order/id")
+
+            if not order_id:
+                return (400, {}, json.dumps(build_error_response("order/id is required")))
+
+            for order in self._orders:
+                if order["order/id"] == order_id:
+                    return (200, {}, json.dumps(build_success_response(order)))
+
+            return (404, {}, json.dumps(build_error_response(f"Order not found: {order_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_order_create(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle order/create requests."""
+        try:
+            body = json.loads(request.body)
+            vendor = body.get("order/vendor")
+
+            if not vendor:
+                return (400, {}, json.dumps(build_error_response("order/vendor is required")))
+
+            new_order = {
+                "order/id": f"order_{int(time.time())}",
+                "order/vendor": vendor,
+                "order/number": body.get("order/number", ""),
+                "order/status": "open",
+                "order/created": int(time.time() * 1000),
+                "order/comments": body.get("order/comments", ""),
+            }
+            self._orders.append(new_order)
+            return (200, {}, json.dumps(build_success_response(new_order)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_order_entries(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle order/get-entries requests."""
+        try:
+            body = json.loads(request.body)
+            order_id = body.get("order/id")
+
+            if not order_id:
+                return (400, {}, json.dumps(build_error_response("order/id is required")))
+
+            entries = self._order_entries.get(order_id, [])
+            return (200, {}, json.dumps(build_success_response(entries)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_order_add_entries(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle order/add-entries requests."""
+        try:
+            body = json.loads(request.body)
+            order_id = body.get("order/id")
+
+            if not order_id:
+                return (400, {}, json.dumps(build_error_response("order/id is required")))
+
+            return (200, {}, json.dumps(build_success_response({"status": "ok"})))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_order_receive(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle order/receive requests."""
+        try:
+            body = json.loads(request.body)
+            order_id = body.get("order/id")
+            storage_id = body.get("stock/storage-id")
+
+            if not order_id:
+                return (400, {}, json.dumps(build_error_response("order/id is required")))
+            if not storage_id:
+                return (400, {}, json.dumps(build_error_response("stock/storage-id is required")))
+
+            return (200, {}, json.dumps(build_success_response({"status": "received"})))
         except Exception as e:
             return (500, {}, json.dumps(build_error_response(str(e))))
 

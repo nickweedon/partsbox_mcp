@@ -26,3 +26,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/partsbox_mcp"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "responses>=0.25.8",
+]
