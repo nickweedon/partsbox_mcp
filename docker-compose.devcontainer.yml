@@ -7,14 +7,15 @@ services:
       dockerfile: Dockerfile
       args:
         INSTALL_MCP: false
+        CREATE_VSCODE_USER: true
     image: partsbox-mcp-vscode:latest
     container_name: partsbox-mcp-devcontainer
     environment:
       - PARTSBOX_API_KEY=${PARTSBOX_API_KEY}
     env_file:
       - .env
-    # Run as root user
-    user: root
+    # Run as vscode user for devcontainer
+    user: vscode
     # Mount local workspace for live development
     volumes:
       - .:/workspace

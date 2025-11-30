@@ -6,7 +6,7 @@
   "service": "partsbox-mcp-vscode",
 
   // Set the default user for VS Code
-  "remoteUser": "root",
+  "remoteUser": "vscode",
 
   // Working directory inside the container
   "workspaceFolder": "/workspace",
@@ -25,7 +25,7 @@
         "anthropic.claude-code"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/root/.local/bin/uv",
+        "python.defaultInterpreterPath": "/home/vscode/.local/bin/uv",
         "python.terminal.activateEnvironment": true,
         "terminal.integrated.defaultProfile.linux": "bash"
       }

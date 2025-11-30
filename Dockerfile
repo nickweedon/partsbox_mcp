@@ -33,9 +33,23 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 # Install Claude Code CLI globally
 RUN npm install -g @anthropic-ai/claude-code
 
-# Install uv package manager
+# Create vscode user with uid/gid 1000/1000 for devcontainer use
+ARG CREATE_VSCODE_USER=false
+RUN if [ "$CREATE_VSCODE_USER" = "true" ]; then \
+    groupadd --gid 1000 vscode && \
+    useradd --uid 1000 --gid 1000 -m -s /bin/bash vscode && \
+    echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/vscode && \
+    chmod 0440 /etc/sudoers.d/vscode; \
+    fi
+
+# Install uv package manager for root
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
+
+# Install uv for vscode user if created
+RUN if [ "$CREATE_VSCODE_USER" = "true" ]; then \
+    su - vscode -c "curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+    fi
 
 # Set working directory (workspace will be mounted here)
 WORKDIR /workspace
