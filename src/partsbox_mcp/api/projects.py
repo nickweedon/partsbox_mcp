@@ -124,11 +124,25 @@ def list_projects(
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection. Examples:
             - "[?contains(\"project/name\", 'Arduino')]" - filter by name
+            - "[?\"project/archived\" == `false`]" - active projects only
             - "sort_by(@, &\"project/name\")" - sort by name
         include_archived: Include archived projects (default False)
 
     Returns:
-        PaginatedProjectsResponse with projects data and pagination info
+        PaginatedProjectsResponse with projects data and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "project/id": {"type": "string", "description": "Project identifier (26-char compact UUID)"},
+                "project/name": {"type": "string", "description": "Project name"},
+                "project/description": {"type": ["string", "null"], "description": "Project description"},
+                "project/notes": {"type": ["string", "null"], "description": "Longer-form notes (Markdown supported)"},
+                "project/archived": {"type": "boolean", "description": "Whether project is archived"},
+                "project/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if limit < 1 or limit > 1000:
         return PaginatedProjectsResponse(

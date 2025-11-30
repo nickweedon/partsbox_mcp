@@ -90,12 +90,30 @@ def list_orders(
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection. Examples:
-            - "[?\"order/status\" == 'open']" - filter by status
-            - "[?contains(\"order/vendor\", 'Mouser')]" - filter by vendor
+            - "[?contains(\"order/vendor-name\", 'Mouser')]" - filter by vendor
+            - "[?\"order/arriving\" != null]" - orders with expected delivery
             - "sort_by(@, &\"order/created\")" - sort by creation date
 
     Returns:
-        PaginatedOrdersResponse with orders data and pagination info
+        PaginatedOrdersResponse with orders data and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "order/id": {"type": "string", "description": "Order identifier (26-char compact UUID)"},
+                "order/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC)"},
+                "order/vendor-name": {"type": ["string", "null"], "description": "Vendor or distributor name"},
+                "order/number": {"type": ["string", "null"], "description": "Vendor's order number"},
+                "order/invoice-number": {"type": ["string", "null"], "description": "Vendor's invoice number"},
+                "order/po-number": {"type": ["string", "null"], "description": "Purchase order number"},
+                "order/comments": {"type": ["string", "null"], "description": "Order comments"},
+                "order/notes": {"type": ["string", "null"], "description": "Additional notes (Markdown supported)"},
+                "order/arriving": {"type": ["integer", "null"], "description": "Expected delivery timestamp (UNIX UTC)"},
+                "order/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
+                "order/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if limit < 1 or limit > 1000:
         return PaginatedOrdersResponse(

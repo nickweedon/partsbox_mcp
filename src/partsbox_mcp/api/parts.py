@@ -60,13 +60,31 @@ def list_parts(
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection. Examples:
-            - "[?contains(name, 'resistor')]" - filter by name
-            - "[?stock > `100`]" - filter by stock level
-            - "[?stock < `10`].{name: name, stock: stock}" - filter + projection
-            - "sort_by([?stock > `0`], &name)" - filter + sort
+            - "[?contains(\"part/name\", 'resistor')]" - filter by name
+            - "[?\"part/manufacturer\" == 'Texas Instruments']" - filter by manufacturer
+            - "sort_by(@, &\"part/name\")" - sort by name
 
     Returns:
-        PaginatedPartsResponse with parts data and pagination info
+        PaginatedPartsResponse with parts data and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "part/id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
+                "part/name": {"type": "string", "description": "Part name or internal identifier"},
+                "part/description": {"type": ["string", "null"], "description": "Part description"},
+                "part/type": {"type": "string", "enum": ["sub-assembly", "meta", "linked", "local"], "description": "Part type"},
+                "part/notes": {"type": ["string", "null"], "description": "User notes (Markdown supported)"},
+                "part/footprint": {"type": ["string", "null"], "description": "Physical package footprint"},
+                "part/manufacturer": {"type": ["string", "null"], "description": "Manufacturer name"},
+                "part/mpn": {"type": ["string", "null"], "description": "Manufacturer part number"},
+                "part/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
+                "part/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC)"},
+                "part/stock": {"type": "array", "description": "Stock history entries"},
+                "part/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     # Validate parameters
     if limit < 1 or limit > 1000:

@@ -109,12 +109,28 @@ def list_storage_locations(
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection. Examples:
             - "[?contains(\"storage/name\", 'Drawer')]" - filter by name
-            - "[?\"storage/archived\" == false]" - active only
+            - "[?\"storage/archived\" == `false`]" - active only
             - "sort_by(@, &\"storage/name\")" - sort by name
         include_archived: Include archived locations (default False)
 
     Returns:
-        PaginatedStorageResponse with storage locations and pagination info
+        PaginatedStorageResponse with storage locations and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "storage/id": {"type": "string", "description": "Storage location identifier (26-char compact UUID)"},
+                "storage/name": {"type": "string", "description": "Storage location name"},
+                "storage/description": {"type": ["string", "null"], "description": "Storage location description"},
+                "storage/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
+                "storage/archived": {"type": "boolean", "description": "Whether location is archived"},
+                "storage/full?": {"type": "boolean", "description": "Whether location accepts new stock"},
+                "storage/single-part?": {"type": "boolean", "description": "Single-part-only location"},
+                "storage/existing-parts-only?": {"type": "boolean", "description": "Restrict to existing parts only"},
+                "storage/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if limit < 1 or limit > 1000:
         return PaginatedStorageResponse(

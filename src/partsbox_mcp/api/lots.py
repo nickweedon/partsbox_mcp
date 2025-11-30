@@ -77,7 +77,23 @@ def list_lots(
             - "sort_by(@, &\"lot/name\")" - sort by name
 
     Returns:
-        PaginatedLotsResponse with lots data and pagination info
+        PaginatedLotsResponse with lots data and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "lot/id": {"type": "string", "description": "Lot identifier (26-char compact UUID)"},
+                "lot/name": {"type": ["string", "null"], "description": "Lot name or number"},
+                "lot/description": {"type": ["string", "null"], "description": "Short description"},
+                "lot/comments": {"type": ["string", "null"], "description": "Additional comments"},
+                "lot/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC)"},
+                "lot/expiration-date": {"type": ["integer", "null"], "description": "Expiration timestamp (UNIX UTC)"},
+                "lot/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
+                "lot/order-id": {"type": ["string", "null"], "description": "Linked order identifier"},
+                "lot/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if limit < 1 or limit > 1000:
         return PaginatedLotsResponse(
