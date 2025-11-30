@@ -36,9 +36,9 @@ Add the following to your `claude_desktop_config.json`:
         "-v",
         "C:/docker/partsbox-mcp/.env:/workspace/.env:ro",
         "partsbox-mcp:latest",
-        "/bin/bash",
-        "-c",
-        "cd /workspace && uv run python -m partsbox_mcp.server"
+        "uv",
+        "run",
+        "partsbox-mcp"
       ]
     }
   }
@@ -56,9 +56,9 @@ Add the following to your `claude_desktop_config.json`:
 
 ## Setup Steps
 
-1. **Build the Docker image** (if not already built):
+1. **Build the Docker image** with dependencies pre-installed:
    ```bash
-   docker build -t partsbox-mcp:latest .
+   docker build --build-arg INSTALL_MCP=true -t partsbox-mcp:latest .
    ```
 
 2. **Create your `.env` file** at the path specified in the volume mount:
