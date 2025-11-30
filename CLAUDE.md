@@ -4,15 +4,53 @@ This is an MCP (Model Context Protocol) server for interfacing with the PartsBox
 
 ## Project Structure
 
+Follow standard Python project conventions with a modular architecture. API methods should be organized into separate modules by domain.
+
 ```
 partsbox_mcp/
-├── partsbox_mcp_server.py  # Main MCP server implementation
-├── pyproject.toml          # Project configuration and dependencies
-├── .env                    # Environment variables (API key)
-├── README.md               # User documentation
-├── design.md               # Detailed design documentation
-└── CLAUDE.md               # This file - context for Claude
+├── src/
+│   └── partsbox_mcp/
+│       ├── __init__.py         # Package initialization
+│       ├── server.py           # Main MCP server entry point
+│       ├── client.py           # HTTP client and authentication
+│       ├── api/
+│       │   ├── __init__.py     # API module initialization
+│       │   ├── parts.py        # Parts API methods
+│       │   ├── stock.py        # Stock API methods
+│       │   ├── lots.py         # Lots API methods
+│       │   ├── storage.py      # Storage API methods
+│       │   ├── projects.py     # Projects/BOM API methods
+│       │   └── orders.py       # Orders API methods
+│       └── utils/
+│           ├── __init__.py
+│           └── helpers.py      # Shared utilities
+├── tests/
+│   └── ...                     # Test files mirroring src structure
+├── pyproject.toml              # Project configuration and dependencies
+├── .env                        # Environment variables (API key)
+├── README.md                   # User documentation
+├── design.md                   # Detailed design documentation
+└── CLAUDE.md                   # This file - context for Claude
 ```
+
+## Code Organization Guidelines
+
+1. **Modular API Methods**: Each API domain (Parts, Stock, Lots, Storage, Projects, Orders) MUST be implemented in its own Python module under `src/partsbox_mcp/api/`.
+
+2. **Separation of Concerns**:
+   - `client.py` - HTTP client, authentication, and base request handling
+   - `api/*.py` - Domain-specific API methods only
+   - `utils/` - Shared helper functions and utilities
+   - `server.py` - MCP server setup and tool registration
+
+3. **Standard Python Conventions**:
+   - Use `src/` layout for proper package isolation
+   - Include `__init__.py` files in all packages
+   - Follow PEP 8 naming conventions
+   - Use type hints throughout
+   - Keep modules focused and cohesive
+
+4. **Import Structure**: Each API module should import the shared client and expose its methods. The main server imports and registers tools from each API module.
 
 ## Design Documentation
 
@@ -90,6 +128,12 @@ API keys are generated in PartsBox Settings | Data.
 - Environment variables loaded via `python-dotenv`
 - Requires Python 3.10+
 
+## Git Commit Guidelines
+
+- Do NOT include "Generated with Claude Code" or similar AI attribution in commit messages
+- Do NOT include "Co-Authored-By: Claude" or similar co-author tags
+- Write commit messages as if authored solely by the developer
+
 ## Running the Server
 
 ```bash
@@ -109,3 +153,9 @@ Test the server with:
 ```bash
 uv run python -c "from partsbox_mcp_server import mcp; print('Server loads OK')"
 ```
+
+## Git Commit Guidelines
+
+- Do NOT include "Generated with Claude Code" or similar AI attribution in commit messages
+- Do NOT include "Co-Authored-By: Claude" or similar co-author tags
+- Write commit messages as if authored solely by the developer
