@@ -268,10 +268,33 @@ def get_order_entries(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection
+        query: JMESPath expression for filtering/projection. Examples:
+            - "[?\"stock/quantity\" > `100`]" - entries with quantity > 100
+            - "[?\"stock/currency\" == 'USD']" - USD entries only
+            - "sort_by(@, &\"stock/price\")" - sort by price
 
     Returns:
-        PaginatedOrderEntriesResponse with order entries and pagination info
+        PaginatedOrderEntriesResponse with order entries and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "stock/id": {"type": "string", "description": "Stock entry identifier"},
+                "stock/part-id": {"type": "string", "description": "Part identifier"},
+                "stock/storage-id": {"type": ["string", "null"], "description": "Storage location identifier"},
+                "stock/lot-id": {"type": ["string", "null"], "description": "Lot identifier"},
+                "stock/quantity": {"type": "integer", "description": "Quantity ordered"},
+                "stock/price": {"type": ["number", "null"], "description": "Unit price"},
+                "stock/currency": {"type": ["string", "null"], "description": "Currency code (e.g., USD, EUR)"},
+                "stock/timestamp": {"type": "integer", "description": "Creation timestamp (UNIX UTC)"},
+                "stock/status": {"type": ["string", "null"], "description": "Stock status or null for on-hand"},
+                "stock/comments": {"type": ["string", "null"], "description": "Entry notes"},
+                "stock/order-id": {"type": "string", "description": "Parent order identifier"},
+                "stock/vendor-sku": {"type": ["string", "null"], "description": "Vendor SKU that was ordered"},
+                "stock/arriving": {"type": ["integer", "null"], "description": "Expected delivery date (UNIX UTC)"}
+            }
+        }
     """
     if not order_id:
         return PaginatedOrderEntriesResponse(

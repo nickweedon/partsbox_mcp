@@ -413,11 +413,31 @@ def get_project_entries(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection
+        query: JMESPath expression for filtering/projection. Examples:
+            - "[?\"entry/quantity\" > `10`]" - entries with quantity > 10
+            - "[?contains(\"entry/designators\", 'R1')]" - entries containing designator R1
+            - "sort_by(@, &\"entry/order\")" - sort by BOM order
         build_id: Optional build ID for historical BOM snapshot
 
     Returns:
-        PaginatedEntriesResponse with BOM entries and pagination info
+        PaginatedEntriesResponse with BOM entries and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "entry/id": {"type": "string", "description": "Entry identifier"},
+                "entry/part-id": {"type": "string", "description": "Part identifier"},
+                "entry/quantity": {"type": "integer", "description": "Quantity per board"},
+                "entry/name": {"type": ["string", "null"], "description": "BOM name for this entry"},
+                "entry/comments": {"type": ["string", "null"], "description": "Additional comments"},
+                "entry/designators": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Set of designators (e.g., R1, R2, C1)"},
+                "entry/order": {"type": "integer", "description": "Ordering within the BOM"},
+                "entry/cad-footprint": {"type": ["string", "null"], "description": "Footprint from CAD program"},
+                "entry/cad-key": {"type": ["string", "null"], "description": "CAD key for matching to parts"},
+                "entry/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if not project_id:
         return PaginatedEntriesResponse(
@@ -648,10 +668,22 @@ def get_project_builds(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection
+        query: JMESPath expression for filtering/projection. Examples:
+            - "[?contains(\"build/comments\", 'prototype')]" - builds with 'prototype' in comments
+            - "sort_by(@, &\"build/id\")" - sort by build ID
 
     Returns:
-        PaginatedBuildsResponse with builds data and pagination info
+        PaginatedBuildsResponse with builds data and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "build/id": {"type": "string", "description": "Build identifier (26-char compact UUID)"},
+                "build/project-id": {"type": "string", "description": "Parent project identifier"},
+                "build/comments": {"type": ["string", "null"], "description": "Build notes/comments"}
+            }
+        }
     """
     if not project_id:
         return PaginatedBuildsResponse(

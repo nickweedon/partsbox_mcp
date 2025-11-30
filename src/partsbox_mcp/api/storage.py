@@ -366,10 +366,27 @@ def list_storage_parts(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection
+        query: JMESPath expression for filtering/projection. Examples:
+            - "[?\"source/quantity\" > `100`]" - parts with quantity > 100
+            - "[?\"source/status\" == 'reserved']" - reserved stock only
+            - "sort_by(@, &\"source/quantity\")" - sort by quantity
 
     Returns:
-        PaginatedStoragePartsResponse with parts data and pagination info
+        PaginatedStoragePartsResponse with parts data and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact form)"},
+                "source/storage-id": {"type": "string", "description": "Storage location identifier"},
+                "source/lot-id": {"type": "string", "description": "Lot identifier"},
+                "source/quantity": {"type": "integer", "description": "Stock quantity"},
+                "source/status": {"type": ["string", "null"], "description": "Stock status (ordered, reserved, allocated, in-production, in-transit, planned, rejected, being-ordered) or null for on-hand"},
+                "source/first-timestamp": {"type": "integer", "description": "UNIX timestamp (UTC) of oldest stock entry"},
+                "source/last-timestamp": {"type": "integer", "description": "UNIX timestamp (UTC) of most recent stock entry"}
+            }
+        }
     """
     if not storage_id:
         return PaginatedStoragePartsResponse(
@@ -487,17 +504,34 @@ def list_storage_lots(
     query: str | None = None,
 ) -> PaginatedStorageLotsResponse:
     """
-    List individual lots in a storage location.
+    List individual lots in a storage location (not aggregated by part).
 
     Args:
         storage_id: The storage location ID
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection
+        query: JMESPath expression for filtering/projection. Examples:
+            - "[?\"source/quantity\" > `0`]" - lots with positive quantity
+            - "[?\"source/status\" == 'allocated']" - allocated lots only
+            - "sort_by(@, &\"source/last-timestamp\")" - sort by last update
 
     Returns:
-        PaginatedStorageLotsResponse with lots data and pagination info
+        PaginatedStorageLotsResponse with lots data and pagination info.
+
+        Data items schema:
+        {
+            "type": "object",
+            "properties": {
+                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact form)"},
+                "source/storage-id": {"type": "string", "description": "Storage location identifier"},
+                "source/lot-id": {"type": "string", "description": "Lot identifier"},
+                "source/quantity": {"type": "integer", "description": "Stock quantity"},
+                "source/status": {"type": ["string", "null"], "description": "Stock status (ordered, reserved, allocated, in-production, in-transit, planned, rejected, being-ordered) or null for on-hand"},
+                "source/first-timestamp": {"type": "integer", "description": "UNIX timestamp (UTC) of oldest stock entry"},
+                "source/last-timestamp": {"type": "integer", "description": "UNIX timestamp (UTC) of most recent stock entry"}
+            }
+        }
     """
     if not storage_id:
         return PaginatedStorageLotsResponse(
