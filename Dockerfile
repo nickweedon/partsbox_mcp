@@ -17,6 +17,15 @@ RUN apt-get update && \
     coreutils \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Docker CLI for Docker-outside-of-Docker (DooD) support
+RUN install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
+    chmod a+r /etc/apt/keyrings/docker.asc && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+    apt-get update && \
+    apt-get install -y docker-ce-cli docker-compose-plugin && \
+    rm -rf /var/lib/apt/lists/*
+
 # Configure locale
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen
@@ -39,7 +48,9 @@ RUN if [ "$CREATE_VSCODE_USER" = "true" ]; then \
     groupadd --gid 1000 vscode && \
     useradd --uid 1000 --gid 1000 -m -s /bin/bash vscode && \
     echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/vscode && \
-    chmod 0440 /etc/sudoers.d/vscode; \
+    chmod 0440 /etc/sudoers.d/vscode && \
+    groupadd docker && \
+    usermod -aG docker vscode; \
     fi
 
 # Install uv package manager for root

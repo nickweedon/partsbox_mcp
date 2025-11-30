@@ -19,3 +19,4 @@ services:
     # Mount local workspace for live development
     volumes:
       - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock

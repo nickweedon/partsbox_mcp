@@ -144,15 +144,6 @@ API keys are generated in PartsBox Settings | Data.
 - Environment variables loaded via `python-dotenv`
 - Requires Python 3.10+
 
-## Git Commit Guidelines
-
-- Do NOT include "Generated with Claude Code" or similar AI attribution in commit messages.
-- Do NOT include "Co-Authored-By: Claude" or similar co-author tags.
-- When doing a git commit, If there are untracked files then stop and ask if i would like them included also.
-- Always do a 'git commit -a' and include all modified files.
-- Always include descriptive commit comments that succinctly describe the changes made in the summary and a separate line with a asterisk bullet point that describes each feature or notable change in more detail. 
-- Write commit messages as if authored solely by the developer.
-
 ## Running the Server
 
 ```bash

@@ -35,6 +35,9 @@
   // Run commands after container creation
   "postCreateCommand": "cd /workspace && uv sync",
 
+  // Fix docker group GID to match host's docker socket and sync dependencies
+  "postStartCommand": "sudo chgrp docker /var/run/docker.sock 2>/dev/null || true",
+
   // Features to add
   "features": {}
 }
