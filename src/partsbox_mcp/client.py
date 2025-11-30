@@ -10,6 +10,7 @@ This module provides:
 import os
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from time import time
 from typing import Any
 
@@ -17,8 +18,23 @@ import jmespath
 import requests
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from multiple locations
+# 1. Try the current working directory first
+# 2. Then try the package directory (for when running as MCP server)
+# 3. Then try the user's home directory
+_env_paths = [
+    Path.cwd() / ".env",
+    Path(__file__).parent.parent.parent.parent / ".env",  # workspace/.env
+    Path.home() / ".partsbox" / ".env",
+]
+
+for _env_path in _env_paths:
+    if _env_path.exists():
+        load_dotenv(_env_path)
+        break
+else:
+    # Fallback: try default load_dotenv behavior
+    load_dotenv()
 
 # =============================================================================
 # Configuration
@@ -26,6 +42,12 @@ load_dotenv()
 
 API_KEY = os.getenv("PARTSBOX_API_KEY", "")
 BASE_URL = "https://api.partsbox.com/api/1"
+
+if not API_KEY:
+    raise RuntimeError(
+        "PARTSBOX_API_KEY environment variable not set. "
+        "Set the API key in a .env file or pass it via environment variable."
+    )
 
 
 # =============================================================================
