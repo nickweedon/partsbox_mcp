@@ -61,6 +61,22 @@ See [design.md](design.md) for comprehensive design details including:
 - Error handling patterns
 - Implementation examples with code
 
+In addition to this, the design should:
+- Never change the structure or field names in the default JMESPath query as this can confuse the LLM
+- Always provide a 'returns' description in the docstring tha fully describes the returned type in detail as this is the only way that the LLM can introspect the tool method
+
+## Implementation Guidelines
+
+### MCP Tool Method Signatures
+
+The following guidelines should be followed when modifying or creating new MCP tool methods/functions:
+- Provide JMESPath filtering and projection when the tool method can return large or complex data types
+- Provide paging whenever the method returns a list of objects.
+- Never change the structure or field names in the default JMESPath query as this can confuse the LLM
+- Provide Strongly-typed return values
+- Always provide a JMESPath example in the docstring when the tool accepts JMESPath queries
+- Always provide details of the full output schema in the 'returns' part of the docstring for any method that takes JMESPath queries for filtering and projections. Only document the full schema, do not call out the specific shape of the JMESPath default query as this can consfuse the LLM.
+
 ## API Reference
 
 **Full API Documentation:** https://partsbox.com/api.html
@@ -130,9 +146,12 @@ API keys are generated in PartsBox Settings | Data.
 
 ## Git Commit Guidelines
 
-- Do NOT include "Generated with Claude Code" or similar AI attribution in commit messages
-- Do NOT include "Co-Authored-By: Claude" or similar co-author tags
-- Write commit messages as if authored solely by the developer
+- Do NOT include "Generated with Claude Code" or similar AI attribution in commit messages.
+- Do NOT include "Co-Authored-By: Claude" or similar co-author tags.
+- When doing a git commit, If there are untracked files then stop and ask if i would like them included also.
+- Always do a 'git commit -a' and include all modified files.
+- Always include descriptive commit comments that succinctly describe the changes made in the summary and a separate line with a asterisk bullet point that describes each feature or notable change in more detail. 
+- Write commit messages as if authored solely by the developer.
 
 ## Running the Server
 

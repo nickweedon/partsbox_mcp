@@ -89,3 +89,6 @@ logs/
 
 # UV
 .uv/
+
+# Claude Code
+.claude/settings.local.json

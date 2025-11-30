@@ -120,3 +120,8 @@ Add this to your Claude Desktop config (`~/Library/Application Support/Claude/cl
 
 - [PartsBox API Documentation](https://partsbox.com/api.html)
 - [PartsBox Website](https://partsbox.com/)
+
+
+# Developing
+
+This project is designed to work with vscode and the devcontainers plugin. I recommend also running claude --dangerously-skip-permissions once inside the devcontainer for best results 😁
