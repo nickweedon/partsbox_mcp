@@ -124,6 +124,14 @@ def list_projects(
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
 
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "project/name").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "project/name", "project/id", "project/archived"
+            - WRONG: `project/name` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `project/name` evaluates to the literal string "project/name", not the field value.
+
             Standard JMESPath examples:
             - "[?\"project/archived\" == `false`]" - active projects only
             - "sort_by(@, &\"project/name\")" - sort by name
@@ -441,6 +449,14 @@ def get_project_entries(
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
 
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "entry/quantity").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "entry/quantity", "entry/part-id", "entry/order"
+            - WRONG: `entry/quantity` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `entry/quantity` evaluates to the literal string "entry/quantity", not the field value.
+
             Standard JMESPath examples:
             - "[?\"entry/quantity\" > `10`]" - entries with quantity > 10
             - "sort_by(@, &\"entry/order\")" - sort by BOM order
@@ -707,6 +723,14 @@ def get_project_builds(
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
+
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "build/id").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "build/id", "build/project-id", "build/comments"
+            - WRONG: `build/id` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `build/id` evaluates to the literal string "build/id", not the field value.
 
             Standard JMESPath examples:
             - "sort_by(@, &\"build/id\")" - sort by build ID

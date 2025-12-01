@@ -66,7 +66,28 @@ In addition to this, the design should:
 - Never change the structure or field names in the default JMESPath query as this can confuse the LLM
 - Always provide a 'returns' description in the docstring that fully describes the returned type in detail as this is the only way that the LLM can introspect the tool method
 
-## JMESPath Custom Functions
+## JMESPath Query Syntax
+
+### CRITICAL: Field Identifier Escaping
+
+PartsBox uses field names with `/` characters (e.g., `part/name`, `part/tags`). In JMESPath:
+
+- **Double quotes (`"`)** create **QUOTED IDENTIFIERS** for field access
+- **Backticks (`` ` ``)** create **LITERAL JSON VALUES** (strings, not field references)
+
+**Using backticks is WRONG and will cause silent failures** - queries return empty results because the backtick expression evaluates to a literal string instead of accessing the field value.
+
+```python
+# CORRECT - Double quotes access the field value
+"[?contains(\"part/tags\", 'resistor')]"  # Returns parts with 'resistor' tag
+"[*].{id: \"part/id\", name: \"part/name\"}"  # Projects field values
+
+# WRONG - Backticks create literal strings, NOT field references
+"[?contains(`part/tags`, 'resistor')]"  # Returns NOTHING - checks if literal "part/tags" contains 'resistor'
+"[*].{id: `part/id`, name: `part/name`}"  # Returns literal strings "part/id", "part/name"
+```
+
+### Custom Functions
 
 The server extends standard JMESPath with custom functions in `utils/jmespath_extensions.py`:
 

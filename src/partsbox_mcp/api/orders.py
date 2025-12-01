@@ -91,6 +91,14 @@ def list_orders(
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
 
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "order/vendor-name").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "order/vendor-name", "order/id", "order/created"
+            - WRONG: `order/vendor-name` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `order/vendor-name` evaluates to the literal string "order/vendor-name", not the field value.
+
             Standard JMESPath examples:
             - "[?\"order/arriving\" != null]" - orders with expected delivery
             - "sort_by(@, &\"order/created\")" - sort by creation date
@@ -298,6 +306,14 @@ def get_order_entries(
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
+
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "stock/quantity").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "stock/quantity", "stock/part-id", "stock/price"
+            - WRONG: `stock/quantity` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `stock/quantity` evaluates to the literal string "stock/quantity", not the field value.
 
             Standard JMESPath examples:
             - "[?\"stock/quantity\" > `100`]" - entries with quantity > 100

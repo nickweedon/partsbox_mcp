@@ -109,6 +109,14 @@ def list_storage_locations(
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
 
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "storage/name").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "storage/name", "storage/id", "storage/archived"
+            - WRONG: `storage/name` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `storage/name` evaluates to the literal string "storage/name", not the field value.
+
             Standard JMESPath examples:
             - "[?\"storage/archived\" == `false`]" - active only
             - "sort_by(@, &\"storage/name\")" - sort by name
@@ -396,6 +404,14 @@ def list_storage_parts(
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
 
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "source/quantity").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "source/quantity", "source/part-id", "source/status"
+            - WRONG: `source/quantity` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `source/quantity` evaluates to the literal string "source/quantity", not the field value.
+
             Standard JMESPath examples:
             - "[?\"source/quantity\" > `100`]" - parts with quantity > 100
             - "sort_by(@, &\"source/quantity\")" - sort by quantity
@@ -550,6 +566,14 @@ def list_storage_lots(
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
+
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "source/quantity").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "source/quantity", "source/lot-id", "source/status"
+            - WRONG: `source/quantity` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `source/quantity` evaluates to the literal string "source/quantity", not the field value.
 
             Standard JMESPath examples:
             - "[?\"source/quantity\" > `0`]" - lots with positive quantity

@@ -61,9 +61,19 @@ def list_parts(
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
 
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "part/name").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "part/name", "part/tags", "part/mpn"
+            - WRONG: `part/name` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `part/tags` evaluates to the literal string "part/tags", not the field value.
+
             Standard JMESPath examples:
             - "[?\"part/manufacturer\" == 'Texas Instruments']" - filter by manufacturer
+            - "[?contains(\"part/tags\", 'resistor')]" - filter by tag
             - "sort_by(@, &\"part/name\")" - sort by name
+            - "[*].{id: \"part/id\", name: \"part/name\"}" - projection with field access
 
             Custom functions available:
             - nvl(value, default): Returns default if value is null

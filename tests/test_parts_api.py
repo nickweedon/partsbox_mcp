@@ -107,6 +107,122 @@ class TestListParts:
         assert "offset must be non-negative" in result.error
 
 
+class TestJMESPathFieldEscaping:
+    """
+    Tests for JMESPath field identifier escaping with special characters.
+
+    IMPORTANT: PartsBox uses field names with '/' characters like "part/name".
+    In JMESPath:
+    - Double quotes ("part/name") create QUOTED IDENTIFIERS for field access
+    - Backticks (`part/name`) create LITERAL JSON VALUES (strings)
+
+    Using backticks INCORRECTLY will cause queries to fail silently by
+    comparing against the literal string "part/name" instead of the field value.
+    """
+
+    def test_double_quotes_access_field_correctly(self, fake_api_active):
+        """Double quotes correctly access fields with '/' in their names."""
+        # This is the CORRECT way to reference fields with special characters
+        result = list_parts(query='[?contains("part/tags", \'inductor\')]')
+
+        assert result.success is True
+        # Should find the ESP32 which does NOT have inductor tag
+        # or any part WITH inductor tag - let's check sample data
+        # Sample parts tags: ['resistor', 'smd', '0805'], ['capacitor', 'mlcc', '0603'],
+        # ['mcu', 'wifi', 'bluetooth', 'module'], ['resistor', 'smd', '0805'], ['led', 'smd', '0805', 'red']
+        # No parts have 'inductor' tag
+        assert result.total == 0
+
+    def test_double_quotes_find_resistor_tag(self, fake_api_active):
+        """Double quotes correctly filter by tag value."""
+        result = list_parts(query='[?contains("part/tags", \'resistor\')]')
+
+        assert result.success is True
+        assert result.total == 2  # Two parts have 'resistor' tag
+
+    def test_backticks_create_literal_not_field_reference(self, fake_api_active):
+        """
+        CAUTION: Backticks create literal JSON values, NOT field references.
+
+        This test documents a common mistake. Using backticks like `part/tags`
+        creates the literal string "part/tags" instead of referencing the field.
+        This causes silent failures where queries return empty results.
+        """
+        # WRONG: Using backticks - this will NOT find any parts
+        # because it's checking if the literal string "part/tags" contains "resistor"
+        result = list_parts(query='[?contains(`part/tags`, \'resistor\')]')
+
+        assert result.success is True
+        # Returns 0 because `part/tags` evaluates to the literal string "part/tags"
+        # and "part/tags" does not contain the substring "resistor"
+        assert result.total == 0  # This is the BUG behavior
+
+    def test_backticks_projection_creates_literals(self, fake_api_active):
+        """Backticks in projection create literal values, not field lookups."""
+        # WRONG: Using backticks in projection
+        result = list_parts(
+            query='[*].{id: `part/id`, name: `part/name`}'
+        )
+
+        assert result.success is True
+        # Each item will have literal strings instead of actual field values
+        first = result.data[0]
+        assert first["id"] == "part/id"  # Literal string, not the actual ID!
+        assert first["name"] == "part/name"  # Literal string, not the actual name!
+
+    def test_correct_projection_with_double_quotes(self, fake_api_active):
+        """Double quotes in projection correctly access field values."""
+        # CORRECT: Using double quotes in projection
+        result = list_parts(
+            query='[*].{id: "part/id", name: "part/name"}'
+        )
+
+        assert result.success is True
+        first = result.data[0]
+        assert first["id"] == "part_001"  # Actual field value
+        assert first["name"] == "10K Resistor 0805"  # Actual field value
+
+    def test_filter_with_double_quotes_and_projection(self, fake_api_active):
+        """Complex query with filter and projection using correct escaping."""
+        # CORRECT: Double quotes for all field references
+        query = '[?contains("part/tags", \'smd\')].{id: "part/id", name: "part/name", mpn: "part/mpn", description: "part/description", tags: "part/tags"}'
+        result = list_parts(query=query)
+
+        assert result.success is True
+        assert result.total == 3  # 3 parts with 'smd' tag
+        # Verify actual field values are returned
+        for item in result.data:
+            assert item["id"].startswith("part_")  # Real IDs
+            assert "smd" in item["tags"]  # Real tag values
+
+    def test_sort_with_double_quotes(self, fake_api_active):
+        """Sort expression correctly uses double quotes for field reference."""
+        # CORRECT: Double quotes in sort expression
+        result = list_parts(query='sort_by(@, &"part/name")')
+
+        assert result.success is True
+        names = [p["part/name"] for p in result.data]
+        assert names == sorted(names)
+
+    def test_equality_filter_double_quotes(self, fake_api_active):
+        """Equality filter uses double quotes for field names."""
+        # CORRECT: Double quotes for field, single quotes for value
+        result = list_parts(query='[?"part/type" == \'linked\']')
+
+        assert result.success is True
+        assert result.total == 1
+        assert result.data[0]["part/name"] == "ESP32-WROOM-32"
+
+    def test_nvl_with_double_quotes_for_null_safety(self, fake_api_active):
+        """nvl() function works correctly with double-quoted field names."""
+        # CORRECT: Using nvl with double-quoted field reference
+        result = list_parts(query='[?contains(nvl("part/description", \'\'), \'SMD\')]')
+
+        assert result.success is True
+        # Should find parts with 'SMD' in description
+        assert result.total >= 1
+
+
 class TestListPartsJMESPath:
     """Tests for JMESPath query support in list_parts."""
 

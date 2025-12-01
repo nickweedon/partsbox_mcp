@@ -73,6 +73,14 @@ def list_lots(
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
         query: JMESPath expression for filtering/projection with custom functions.
 
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "lot/name").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "lot/name", "lot/id", "lot/part-id"
+            - WRONG: `lot/name` (backticks create literal strings, not field references)
+
+            Using backticks will silently fail - queries will return empty results because
+            `lot/name` evaluates to the literal string "lot/name", not the field value.
+
             Standard JMESPath examples:
             - "[?\"lot/expiration-date\" != null]" - lots with expiration
             - "sort_by(@, &\"lot/name\")" - sort by name
