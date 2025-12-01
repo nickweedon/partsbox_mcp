@@ -16,6 +16,19 @@ in PartsBox data, preventing errors like:
 
 Example safe query using nvl():
     [?contains(nvl("part/name", ''), 'resistor')]
+
+CRITICAL: JMESPath Literal Syntax
+---------------------------------
+When using nvl() with array or object defaults, you MUST use backticks for literals:
+
+    CORRECT: nvl("part/tags", `[]`)   ← backticks create literal empty array
+    WRONG:   nvl("part/tags", [])     ← [] without backticks evaluates to NULL!
+
+    CORRECT: nvl("part/data", `{}`)   ← backticks create literal empty object
+    WRONG:   nvl("part/data", {})     ← {} without backticks is invalid syntax
+
+For string defaults, use single quotes:
+    CORRECT: nvl("part/name", '')     ← single quotes for empty string
 """
 
 import re
@@ -129,7 +142,7 @@ class CustomFunctions(functions.Functions):
 
         Args:
             value: Value to check for null
-            default: Default value to return if value is null
+            default: Default value to return if value is null (MUST NOT be null)
 
         Returns:
             Original value if not null, otherwise default value
@@ -138,6 +151,21 @@ class CustomFunctions(functions.Functions):
             nvl(null, 'N/A') → 'N/A'
             nvl('existing', 'default') → 'existing'
             nvl(int(Field), 0) → 0 if Field is not a valid number
+
+        CRITICAL - Literal Syntax for Default Values:
+            The default parameter must be a non-null literal value. Use the correct
+            JMESPath syntax for literals:
+
+            - Empty string: Use single quotes: nvl("field", '')
+            - Empty array: Use BACKTICKS: nvl("field", `[]`)
+            - Numbers: Use backticks: nvl("field", `0`)
+            - Objects: Use backticks: nvl("field", `{}`)
+
+            WRONG: nvl("field", [])  ← [] without backticks evaluates to NULL!
+            RIGHT: nvl("field", `[]`) ← backticks create a literal empty array
+
+            Using [] without backticks will cause an error because it evaluates
+            to null, and null is not allowed as the default parameter.
 
         Note:
             This is particularly useful with int() conversions:
