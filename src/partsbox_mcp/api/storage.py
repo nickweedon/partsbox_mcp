@@ -107,10 +107,22 @@ def list_storage_locations(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection. Examples:
-            - "[?contains(\"storage/name\", 'Drawer')]" - filter by name
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            Standard JMESPath examples:
             - "[?\"storage/archived\" == `false`]" - active only
             - "sort_by(@, &\"storage/name\")" - sort by name
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+            IMPORTANT: Use nvl() for safe filtering on nullable fields to avoid errors:
+            - "[?contains(nvl(\"storage/name\", ''), 'Drawer')]" - safe name search
+            - "[?contains(nvl(\"storage/description\", ''), 'SMD')]" - safe description search
+
         include_archived: Include archived locations (default False)
 
     Returns:
@@ -382,10 +394,20 @@ def list_storage_parts(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection. Examples:
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            Standard JMESPath examples:
             - "[?\"source/quantity\" > `100`]" - parts with quantity > 100
-            - "[?\"source/status\" == 'reserved']" - reserved stock only
             - "sort_by(@, &\"source/quantity\")" - sort by quantity
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+            IMPORTANT: Use nvl() for safe filtering on nullable fields to avoid errors:
+            - "[?nvl(\"source/status\", '') == 'reserved']" - safe status check
 
     Returns:
         PaginatedStoragePartsResponse with parts data and pagination info.
@@ -527,10 +549,20 @@ def list_storage_lots(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection. Examples:
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            Standard JMESPath examples:
             - "[?\"source/quantity\" > `0`]" - lots with positive quantity
-            - "[?\"source/status\" == 'allocated']" - allocated lots only
             - "sort_by(@, &\"source/last-timestamp\")" - sort by last update
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+            IMPORTANT: Use nvl() for safe filtering on nullable fields to avoid errors:
+            - "[?nvl(\"source/status\", '') == 'allocated']" - safe status check
 
     Returns:
         PaginatedStorageLotsResponse with lots data and pagination info.

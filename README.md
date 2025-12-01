@@ -78,6 +78,47 @@ The PartsBox API is operation-oriented (not REST) and provides:
 
 *Tools will be implemented to wrap PartsBox API operations. See the server implementation for the complete list of available tools.*
 
+## JMESPath Query Support
+
+All list operations support JMESPath queries for filtering and projection. This server extends standard JMESPath with custom functions for safe null handling and data transformation:
+
+### Custom Functions
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `nvl(value, default)` | Returns default if value is null | `nvl("part/name", '')` |
+| `int(value)` | Converts to integer (null on failure) | `int("custom-field/qty")` |
+| `str(value)` | Converts any value to string | `str("part/id")` |
+| `regex_replace(pattern, repl, value)` | Regex find-and-replace | `regex_replace('[^0-9]', '', "value")` |
+
+### Null-Safe Queries
+
+**IMPORTANT:** Many PartsBox fields are nullable. Use `nvl()` to prevent errors when filtering on these fields:
+
+```python
+# UNSAFE - fails if "part/name" is null
+query="[?contains(\"part/name\", 'resistor')]"
+
+# SAFE - handles null values
+query="[?contains(nvl(\"part/name\", ''), 'resistor')]"
+```
+
+### Query Examples
+
+```python
+# Search parts by name (null-safe)
+query="[?contains(nvl(\"part/name\", ''), 'capacitor')]"
+
+# Filter by manufacturer
+query="[?nvl(\"part/manufacturer\", '') == 'Texas Instruments']"
+
+# Combine conditions
+query="[?contains(nvl(\"part/name\", ''), 'resistor') && \"stock/total\" > `0`]"
+
+# Sort results
+query="sort_by(@, &\"part/name\")"
+```
+
 ## Important Notes
 
 ### Authentication

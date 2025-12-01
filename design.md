@@ -236,6 +236,54 @@ JMESPath provides a standardized, well-documented query language for JSON. It en
 - **Projection**: Select/rename specific fields
 - **Transformation**: Sort, slice, flatten data
 
+### Custom JMESPath Functions
+
+We extend standard JMESPath with custom functions to handle common data transformation and null-safety challenges:
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `nvl` | `nvl(value, default)` | Returns `default` if `value` is null; prevents null-related errors |
+| `int` | `int(value)` | Converts string/number to integer; returns null on failure |
+| `str` | `str(value)` | Converts any value to string representation |
+| `regex_replace` | `regex_replace(pattern, replacement, value)` | Regex find-and-replace on strings |
+
+#### The nvl() Function - Preventing Null Errors
+
+The `nvl()` function is **critical** for safe filtering on nullable fields. Without it, queries using `contains()` or other string functions on null values will fail with errors like:
+
+```
+"In function contains(), invalid type for value: None, expected one of: ['array', 'string'], received: \"null\""
+```
+
+**IMPORTANT:** Always use `nvl()` when filtering on fields that may be null:
+
+```python
+# UNSAFE - will fail if "part/name" is null
+query="[?contains(\"part/name\", 'resistor')]"
+
+# SAFE - handles null values gracefully
+query="[?contains(nvl(\"part/name\", ''), 'resistor')]"
+```
+
+#### Custom Function Examples
+
+```python
+# Safe text search on nullable fields
+query="[?contains(nvl(\"part/description\", ''), 'SMD')]"
+
+# Convert string values to integers for comparison
+query="[?int(\"custom-field/quantity\") > `100`]"
+
+# Safe integer conversion with default
+query="[?nvl(int(\"custom-field/quantity\"), `0`) > `100`]"
+
+# Regex transformation for extracting numeric values
+query="[?int(regex_replace('[^0-9]', '', \"part/value\")) >= `100`]"
+
+# Convert values to strings for concatenation
+query="[*].{display: str(\"part/name\")}}"
+```
+
 ### Single Query Parameter Design
 
 We use a **single `query` parameter** that accepts any valid JMESPath expression. This allows filtering and projection to be combined naturally in one expression:
@@ -326,29 +374,29 @@ However, we favor the simpler single-query approach since these edge cases are u
 
 ### Common JMESPath Patterns
 
-#### Filtering
+#### Filtering (Null-Safe)
 
 ```python
-# Parts with "resistor" in name (case-sensitive)
-query="[?contains(name, 'resistor')]"
+# Parts with "resistor" in name - use nvl() for null safety
+query="[?contains(nvl(\"part/name\", ''), 'resistor')]"
 
-# Parts with stock greater than 100
-query="[?stock > `100`]"
+# Parts with stock greater than 100 (numeric fields are typically non-null)
+query="[?\"stock/total\" > `100`]"
 
-# Parts in a specific category
-query="[?category == 'Capacitors']"
+# Parts from a specific manufacturer - use nvl() since manufacturer can be null
+query="[?nvl(\"part/manufacturer\", '') == 'Texas Instruments']"
 
-# Combined conditions (AND)
-query="[?contains(name, 'resistor') && stock > `0`]"
+# Combined conditions (AND) - nvl() each nullable field
+query="[?contains(nvl(\"part/name\", ''), 'resistor') && \"stock/total\" > `0`]"
 
 # Combined conditions (OR)
-query="[?category == 'Resistors' || category == 'Capacitors']"
+query="[?contains(nvl(\"part/name\", ''), 'Resistor') || contains(nvl(\"part/name\", ''), 'Capacitor')]"
 
-# Parts with specific MPN prefix
-query="[?starts_with(mpn, 'RC0805')]"
+# Parts with specific MPN prefix - use nvl() since mpn can be null
+query="[?starts_with(nvl(\"part/mpn\", ''), 'RC0805')]"
 
 # Parts in specific storage location
-query="[?location.name == 'Drawer A1']"
+query="[?nvl(\"storage/name\", '') == 'Drawer A1']"
 ```
 
 #### Projection
@@ -370,28 +418,38 @@ query="reverse(sort_by(@, &stock))"
 query="[*].name"
 ```
 
-#### Combined Filter + Projection
+#### Combined Filter + Projection (Null-Safe)
 
 ```python
-# Low stock resistors, minimal fields
-query="[?contains(name, 'resistor') && stock < `10`].{name: name, stock: stock, location: storage}"
+# Low stock resistors, minimal fields - use nvl() for name search
+query="[?contains(nvl(\"part/name\", ''), 'resistor') && \"stock/total\" < `10`].{name: \"part/name\", stock: \"stock/total\"}"
 
 # Out of stock items sorted by name
-query="sort_by([?stock == `0`], &name)[*].{name: name, mpn: mpn}"
+query="sort_by([?\"stock/total\" == `0`], &\"part/name\")[*].{name: \"part/name\", mpn: \"part/mpn\"}"
 
-# Capacitors with stock, sorted by stock descending
-query="reverse(sort_by([?category == 'Capacitors' && stock > `0`], &stock))"
+# Parts with description containing 'SMD', sorted by stock descending
+query="reverse(sort_by([?contains(nvl(\"part/description\", ''), 'SMD') && \"stock/total\" > `0`], &\"stock/total\"))"
 ```
 
 ### JMESPath Processor
 
+The JMESPath processor uses custom functions from `partsbox_mcp.utils.jmespath_extensions`:
+
 ```python
+from partsbox_mcp.utils.jmespath_extensions import search_with_custom_functions
+
 def apply_query(
     data: list[dict[str, Any]],
     expression: str
 ) -> tuple[list[Any] | Any, str | None]:
     """
-    Apply a JMESPath expression to data.
+    Apply a JMESPath expression to data with custom function support.
+
+    Custom functions available:
+    - nvl(value, default): Return default if value is null
+    - int(value): Convert to integer (returns null on failure)
+    - str(value): Convert any value to string
+    - regex_replace(pattern, replacement, value): Regex find-and-replace
 
     Returns:
         Tuple of (result, error_message)
@@ -399,7 +457,7 @@ def apply_query(
         result may be a list or other type depending on the expression
     """
     try:
-        result = jmespath.search(expression, data)
+        result = search_with_custom_functions(expression, data)
         return (result if result is not None else [], None)
     except jmespath.exceptions.JMESPathError as e:
         return ([], f"Invalid query expression: {e}")

@@ -89,10 +89,21 @@ def list_orders(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection. Examples:
-            - "[?contains(\"order/vendor-name\", 'Mouser')]" - filter by vendor
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            Standard JMESPath examples:
             - "[?\"order/arriving\" != null]" - orders with expected delivery
             - "sort_by(@, &\"order/created\")" - sort by creation date
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+            IMPORTANT: Use nvl() for safe filtering on nullable fields to avoid errors:
+            - "[?contains(nvl(\"order/vendor-name\", ''), 'Mouser')]" - safe vendor search
+            - "[?contains(nvl(\"order/comments\", ''), 'urgent')]" - safe comments search
 
     Returns:
         PaginatedOrdersResponse with orders data and pagination info.
@@ -286,10 +297,21 @@ def get_order_entries(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection. Examples:
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            Standard JMESPath examples:
             - "[?\"stock/quantity\" > `100`]" - entries with quantity > 100
-            - "[?\"stock/currency\" == 'USD']" - USD entries only
             - "sort_by(@, &\"stock/price\")" - sort by price
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+            IMPORTANT: Use nvl() for safe filtering on nullable fields to avoid errors:
+            - "[?nvl(\"stock/currency\", '') == 'USD']" - safe currency check
+            - "[?contains(nvl(\"stock/comments\", ''), 'priority')]" - safe comments search
 
     Returns:
         PaginatedOrderEntriesResponse with order entries and pagination info.

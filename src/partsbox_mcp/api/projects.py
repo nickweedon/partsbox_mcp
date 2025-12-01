@@ -122,10 +122,22 @@ def list_projects(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection. Examples:
-            - "[?contains(\"project/name\", 'Arduino')]" - filter by name
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            Standard JMESPath examples:
             - "[?\"project/archived\" == `false`]" - active projects only
             - "sort_by(@, &\"project/name\")" - sort by name
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+            IMPORTANT: Use nvl() for safe filtering on nullable fields to avoid errors:
+            - "[?contains(nvl(\"project/name\", ''), 'Arduino')]" - safe name search
+            - "[?contains(nvl(\"project/description\", ''), 'prototype')]" - safe description search
+
         include_archived: Include archived projects (default False)
 
     Returns:
@@ -427,10 +439,22 @@ def get_project_entries(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection. Examples:
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            Standard JMESPath examples:
             - "[?\"entry/quantity\" > `10`]" - entries with quantity > 10
-            - "[?contains(\"entry/designators\", 'R1')]" - entries containing designator R1
             - "sort_by(@, &\"entry/order\")" - sort by BOM order
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+            IMPORTANT: Use nvl() for safe filtering on nullable fields to avoid errors:
+            - "[?contains(nvl(\"entry/name\", ''), 'capacitor')]" - safe name search
+            - "[?contains(nvl(\"entry/comments\", ''), 'DNP')]" - safe comments search
+
         build_id: Optional build ID for historical BOM snapshot
 
     Returns:
@@ -682,9 +706,19 @@ def get_project_builds(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection. Examples:
-            - "[?contains(\"build/comments\", 'prototype')]" - builds with 'prototype' in comments
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            Standard JMESPath examples:
             - "sort_by(@, &\"build/id\")" - sort by build ID
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+            IMPORTANT: Use nvl() for safe filtering on nullable fields to avoid errors:
+            - "[?contains(nvl(\"build/comments\", ''), 'prototype')]" - safe comments search
 
     Returns:
         PaginatedBuildsResponse with builds data and pagination info.

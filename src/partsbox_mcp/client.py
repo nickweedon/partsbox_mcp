@@ -4,7 +4,7 @@ PartsBox API client and caching infrastructure.
 This module provides:
 - PartsBoxClient: HTTP client for the PartsBox API
 - PaginationCache: Client-controlled caching for pagination
-- JMESPath query support
+- JMESPath query support with custom functions (nvl, int, str, regex_replace)
 """
 
 import os
@@ -17,6 +17,8 @@ from typing import Any
 import jmespath
 import requests
 from dotenv import load_dotenv
+
+from partsbox_mcp.utils.jmespath_extensions import search_with_custom_functions
 
 # Load environment variables from multiple locations
 # 1. Try the current working directory first
@@ -198,7 +200,13 @@ def apply_query(
     data: list[dict[str, Any]], expression: str
 ) -> tuple[Any, str | None]:
     """
-    Apply a JMESPath expression to data.
+    Apply a JMESPath expression to data with custom function support.
+
+    This function uses extended JMESPath with custom functions:
+    - nvl(value, default): Return default if value is null (prevents null errors)
+    - int(value): Convert string/number to integer (returns null on failure)
+    - str(value): Convert any value to string
+    - regex_replace(pattern, replacement, value): Regex find-and-replace
 
     Args:
         data: The data to query
@@ -207,9 +215,13 @@ def apply_query(
     Returns:
         Tuple of (result, error_message)
         error_message is None on success
+
+    Example:
+        # Safe filtering with nullable fields using nvl():
+        apply_query(data, "[?contains(nvl(\"part/name\", ''), 'resistor')]")
     """
     try:
-        result = jmespath.search(expression, data)
+        result = search_with_custom_functions(expression, data)
         return (result if result is not None else [], None)
     except jmespath.exceptions.JMESPathError as e:
         return ([], f"Invalid query expression: {e}")

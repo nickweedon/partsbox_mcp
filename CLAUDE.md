@@ -23,7 +23,8 @@ partsbox_mcp/
 │       │   └── orders.py       # Orders API methods
 │       └── utils/
 │           ├── __init__.py
-│           └── helpers.py      # Shared utilities
+│           ├── helpers.py              # Shared utilities
+│           └── jmespath_extensions.py  # Custom JMESPath functions (nvl, int, str, regex_replace)
 ├── tests/
 │   └── ...                     # Test files mirroring src structure
 ├── pyproject.toml              # Project configuration and dependencies
@@ -56,14 +57,44 @@ partsbox_mcp/
 
 See [design.md](design.md) for comprehensive design details including:
 - Caching strategy with client-controlled keys
-- JMESPath filtering and projection
+- JMESPath filtering and projection with custom functions
 - Strongly-typed return values
 - Error handling patterns
 - Implementation examples with code
 
 In addition to this, the design should:
 - Never change the structure or field names in the default JMESPath query as this can confuse the LLM
-- Always provide a 'returns' description in the docstring tha fully describes the returned type in detail as this is the only way that the LLM can introspect the tool method
+- Always provide a 'returns' description in the docstring that fully describes the returned type in detail as this is the only way that the LLM can introspect the tool method
+
+## JMESPath Custom Functions
+
+The server extends standard JMESPath with custom functions in `utils/jmespath_extensions.py`:
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `nvl` | `nvl(value, default)` | Returns `default` if `value` is null - **CRITICAL for null safety** |
+| `int` | `int(value)` | Converts string/number to integer; returns null on failure |
+| `str` | `str(value)` | Converts any value to string representation |
+| `regex_replace` | `regex_replace(pattern, replacement, value)` | Regex find-and-replace on strings |
+
+### IMPORTANT: Null-Safe Queries
+
+Many PartsBox fields are nullable. **Always use `nvl()` when filtering with `contains()`, `starts_with()`, or equality checks on nullable fields.** Without it, queries will fail with errors like:
+
+```
+"In function contains(), invalid type for value: None, expected one of: ['array', 'string'], received: \"null\""
+```
+
+**Correct patterns:**
+```python
+# SAFE - handles null values
+"[?contains(nvl(\"part/name\", ''), 'resistor')]"
+
+# UNSAFE - fails on null
+"[?contains(\"part/name\", 'resistor')]"
+```
+
+When adding new JMESPath examples in docstrings, always use the null-safe pattern with `nvl()` for string fields.
 
 ## Implementation Guidelines
 

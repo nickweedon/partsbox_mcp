@@ -59,10 +59,22 @@ def list_parts(
         limit: Maximum items to return (1-1000, default 50)
         offset: Starting index in query results (default 0)
         cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection. Examples:
-            - "[?contains(\"part/name\", 'resistor')]" - filter by name
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            Standard JMESPath examples:
             - "[?\"part/manufacturer\" == 'Texas Instruments']" - filter by manufacturer
             - "sort_by(@, &\"part/name\")" - sort by name
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+            IMPORTANT: Use nvl() for safe filtering on nullable fields to avoid errors:
+            - "[?contains(nvl(\"part/name\", ''), 'resistor')]" - safe name search
+            - "[?contains(nvl(\"part/description\", ''), 'SMD')]" - safe description search
+            - "[?contains(nvl(\"part/mpn\", ''), 'RC0805')]" - safe MPN search
 
     Returns:
         PaginatedPartsResponse with parts data and pagination info.
