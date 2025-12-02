@@ -24,6 +24,7 @@ from typing import Any
 import requests
 
 from partsbox_mcp.client import api_client, apply_query, cache
+from partsbox_mcp.types import BuildData, ProjectData, ProjectEntryData
 
 
 # =============================================================================
@@ -36,7 +37,7 @@ class ProjectResponse:
     """Response for a single project."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: ProjectData | None = None
     error: str | None = None
 
 
@@ -50,7 +51,7 @@ class PaginatedProjectsResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[ProjectData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -60,7 +61,7 @@ class ProjectOperationResponse:
     """Response for project modification operations."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: ProjectData | None = None
     error: str | None = None
 
 
@@ -74,7 +75,7 @@ class PaginatedEntriesResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[ProjectEntryData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -89,7 +90,7 @@ class PaginatedBuildsResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[BuildData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -99,7 +100,7 @@ class BuildResponse:
     """Response for a single build."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: BuildData | None = None
     error: str | None = None
 
 
@@ -154,12 +155,17 @@ def list_projects(
         Data items schema:
         {
             "type": "object",
+            "required": ["project/id", "project/name"],
             "properties": {
                 "project/id": {"type": "string", "description": "Project identifier (26-char compact UUID)"},
                 "project/name": {"type": "string", "description": "Project name"},
                 "project/description": {"type": ["string", "null"], "description": "Project description"},
                 "project/notes": {"type": ["string", "null"], "description": "Longer-form notes (Markdown supported)"},
-                "project/archived": {"type": "boolean", "description": "Whether project is archived"},
+                "project/comments": {"type": ["string", "null"], "description": "Project comments"},
+                "project/archived": {"type": "boolean", "description": "Whether project is archived (default: false)"},
+                "project/created": {"type": ["integer", "null"], "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "project/updated": {"type": ["integer", "null"], "description": "Last update timestamp (UNIX UTC milliseconds)"},
+                "project/entry-count": {"type": ["integer", "null"], "description": "Number of BOM entries"},
                 "project/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
             }
         }
@@ -270,7 +276,25 @@ def get_project(project_id: str) -> ProjectResponse:
         project_id: The unique identifier of the project
 
     Returns:
-        ProjectResponse with project data or error
+        ProjectResponse with project data or error.
+
+        Data schema:
+        {
+            "type": "object",
+            "required": ["project/id", "project/name"],
+            "properties": {
+                "project/id": {"type": "string", "description": "Project identifier (26-char compact UUID)"},
+                "project/name": {"type": "string", "description": "Project name"},
+                "project/description": {"type": ["string", "null"], "description": "Project description"},
+                "project/notes": {"type": ["string", "null"], "description": "Longer-form notes (Markdown supported)"},
+                "project/comments": {"type": ["string", "null"], "description": "Project comments"},
+                "project/archived": {"type": "boolean", "description": "Whether project is archived (default: false)"},
+                "project/created": {"type": ["integer", "null"], "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "project/updated": {"type": ["integer", "null"], "description": "Last update timestamp (UNIX UTC milliseconds)"},
+                "project/entry-count": {"type": ["integer", "null"], "description": "Number of BOM entries"},
+                "project/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if not project_id:
         return ProjectResponse(success=False, error="project_id is required")
@@ -303,7 +327,25 @@ def create_project(
         entries: Optional list of initial BOM entries
 
     Returns:
-        ProjectOperationResponse with the created project data
+        ProjectOperationResponse with the created project data.
+
+        Data schema:
+        {
+            "type": "object",
+            "required": ["project/id", "project/name"],
+            "properties": {
+                "project/id": {"type": "string", "description": "Project identifier (26-char compact UUID)"},
+                "project/name": {"type": "string", "description": "Project name"},
+                "project/description": {"type": ["string", "null"], "description": "Project description"},
+                "project/notes": {"type": ["string", "null"], "description": "Longer-form notes (Markdown supported)"},
+                "project/comments": {"type": ["string", "null"], "description": "Project comments"},
+                "project/archived": {"type": "boolean", "description": "Whether project is archived (default: false)"},
+                "project/created": {"type": ["integer", "null"], "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "project/updated": {"type": ["integer", "null"], "description": "Last update timestamp (UNIX UTC milliseconds)"},
+                "project/entry-count": {"type": ["integer", "null"], "description": "Number of BOM entries"},
+                "project/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if not name:
         return ProjectOperationResponse(success=False, error="name is required")
@@ -342,7 +384,25 @@ def update_project(
         comments: Optional new comments
 
     Returns:
-        ProjectOperationResponse with the updated project data
+        ProjectOperationResponse with the updated project data.
+
+        Data schema:
+        {
+            "type": "object",
+            "required": ["project/id", "project/name"],
+            "properties": {
+                "project/id": {"type": "string", "description": "Project identifier (26-char compact UUID)"},
+                "project/name": {"type": "string", "description": "Project name"},
+                "project/description": {"type": ["string", "null"], "description": "Project description"},
+                "project/notes": {"type": ["string", "null"], "description": "Longer-form notes (Markdown supported)"},
+                "project/comments": {"type": ["string", "null"], "description": "Project comments"},
+                "project/archived": {"type": "boolean", "description": "Whether project is archived (default: false)"},
+                "project/created": {"type": ["integer", "null"], "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "project/updated": {"type": ["integer", "null"], "description": "Last update timestamp (UNIX UTC milliseconds)"},
+                "project/entry-count": {"type": ["integer", "null"], "description": "Number of BOM entries"},
+                "project/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if not project_id:
         return ProjectOperationResponse(success=False, error="project_id is required")
@@ -373,7 +433,9 @@ def delete_project(project_id: str) -> ProjectOperationResponse:
         project_id: The unique identifier of the project
 
     Returns:
-        ProjectOperationResponse with the result
+        ProjectOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
     """
     if not project_id:
         return ProjectOperationResponse(success=False, error="project_id is required")
@@ -395,7 +457,9 @@ def archive_project(project_id: str) -> ProjectOperationResponse:
         project_id: The unique identifier of the project
 
     Returns:
-        ProjectOperationResponse with the result
+        ProjectOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
     """
     if not project_id:
         return ProjectOperationResponse(success=False, error="project_id is required")
@@ -417,7 +481,9 @@ def restore_project(project_id: str) -> ProjectOperationResponse:
         project_id: The unique identifier of the project
 
     Returns:
-        ProjectOperationResponse with the result
+        ProjectOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
     """
     if not project_id:
         return ProjectOperationResponse(success=False, error="project_id is required")
@@ -620,7 +686,9 @@ def add_project_entries(
             - Optional: entry/designators, entry/comments
 
     Returns:
-        ProjectOperationResponse with the result
+        ProjectOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
     """
     if not project_id:
         return ProjectOperationResponse(success=False, error="project_id is required")
@@ -653,7 +721,9 @@ def update_project_entries(
         entries: List of entry objects with entry/id and fields to update
 
     Returns:
-        ProjectOperationResponse with the result
+        ProjectOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
     """
     if not project_id:
         return ProjectOperationResponse(success=False, error="project_id is required")
@@ -686,7 +756,9 @@ def delete_project_entries(
         entry_ids: List of entry IDs to delete
 
     Returns:
-        ProjectOperationResponse with the result
+        ProjectOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
     """
     if not project_id:
         return ProjectOperationResponse(success=False, error="project_id is required")
@@ -875,7 +947,17 @@ def get_build(build_id: str) -> BuildResponse:
         build_id: The unique identifier of the build
 
     Returns:
-        BuildResponse with build data or error
+        BuildResponse with build data or error.
+
+        Data schema:
+        {
+            "type": "object",
+            "properties": {
+                "build/id": {"type": "string", "description": "Build identifier (26-char compact UUID)"},
+                "build/project-id": {"type": "string", "description": "Parent project identifier"},
+                "build/comments": {"type": ["string", "null"], "description": "Build notes/comments"}
+            }
+        }
     """
     if not build_id:
         return BuildResponse(success=False, error="build_id is required")
@@ -902,7 +984,17 @@ def update_build(
         comments: Optional new comments
 
     Returns:
-        BuildResponse with the updated build data
+        BuildResponse with the updated build data.
+
+        Data schema:
+        {
+            "type": "object",
+            "properties": {
+                "build/id": {"type": "string", "description": "Build identifier (26-char compact UUID)"},
+                "build/project-id": {"type": "string", "description": "Parent project identifier"},
+                "build/comments": {"type": ["string", "null"], "description": "Build notes/comments"}
+            }
+        }
     """
     if not build_id:
         return BuildResponse(success=False, error="build_id is required")

@@ -16,6 +16,7 @@ from typing import Any
 import requests
 
 from partsbox_mcp.client import api_client, apply_query, cache
+from partsbox_mcp.types import OrderData, OrderEntryData
 
 
 # =============================================================================
@@ -28,7 +29,7 @@ class OrderResponse:
     """Response for a single order."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: OrderData | None = None
     error: str | None = None
 
 
@@ -42,7 +43,7 @@ class PaginatedOrdersResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[OrderData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -52,7 +53,7 @@ class OrderOperationResponse:
     """Response for order modification operations."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: OrderData | None = None
     error: str | None = None
 
 
@@ -66,7 +67,7 @@ class PaginatedOrderEntriesResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[OrderEntryData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -236,7 +237,25 @@ def get_order(order_id: str) -> OrderResponse:
         order_id: The unique identifier of the order
 
     Returns:
-        OrderResponse with order data or error
+        OrderResponse with order data or error.
+
+        Data schema:
+        {
+            "type": "object",
+            "properties": {
+                "order/id": {"type": "string", "description": "Order identifier (26-char compact UUID)"},
+                "order/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "order/vendor-name": {"type": ["string", "null"], "description": "Vendor or distributor name"},
+                "order/number": {"type": ["string", "null"], "description": "Vendor's order number"},
+                "order/invoice-number": {"type": ["string", "null"], "description": "Vendor's invoice number"},
+                "order/po-number": {"type": ["string", "null"], "description": "Purchase order number"},
+                "order/comments": {"type": ["string", "null"], "description": "Order comments"},
+                "order/notes": {"type": ["string", "null"], "description": "Additional notes (Markdown supported)"},
+                "order/arriving": {"type": ["integer", "null"], "description": "Expected delivery timestamp (UNIX UTC milliseconds)"},
+                "order/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
+                "order/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if not order_id:
         return OrderResponse(success=False, error="order_id is required")
@@ -267,7 +286,25 @@ def create_order(
         entries: Optional list of initial order entries
 
     Returns:
-        OrderOperationResponse with the created order data
+        OrderOperationResponse with the created order data.
+
+        Data schema:
+        {
+            "type": "object",
+            "properties": {
+                "order/id": {"type": "string", "description": "Order identifier (26-char compact UUID)"},
+                "order/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "order/vendor-name": {"type": ["string", "null"], "description": "Vendor or distributor name"},
+                "order/number": {"type": ["string", "null"], "description": "Vendor's order number"},
+                "order/invoice-number": {"type": ["string", "null"], "description": "Vendor's invoice number"},
+                "order/po-number": {"type": ["string", "null"], "description": "Purchase order number"},
+                "order/comments": {"type": ["string", "null"], "description": "Order comments"},
+                "order/notes": {"type": ["string", "null"], "description": "Additional notes (Markdown supported)"},
+                "order/arriving": {"type": ["integer", "null"], "description": "Expected delivery timestamp (UNIX UTC milliseconds)"},
+                "order/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
+                "order/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if not vendor:
         return OrderOperationResponse(success=False, error="vendor is required")
@@ -475,7 +512,9 @@ def add_order_entries(
             - Optional: entry/price, entry/currency
 
     Returns:
-        OrderOperationResponse with the result
+        OrderOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
     """
     if not order_id:
         return OrderOperationResponse(success=False, error="order_id is required")
@@ -514,7 +553,9 @@ def receive_order(
         comments: Optional comments for the receipt
 
     Returns:
-        OrderOperationResponse with the result
+        OrderOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
     """
     if not order_id:
         return OrderOperationResponse(success=False, error="order_id is required")

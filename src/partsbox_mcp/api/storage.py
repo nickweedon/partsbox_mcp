@@ -18,6 +18,7 @@ from typing import Any
 import requests
 
 from partsbox_mcp.client import api_client, apply_query, cache
+from partsbox_mcp.types import SourceData, StorageData
 
 
 # =============================================================================
@@ -30,7 +31,7 @@ class StorageResponse:
     """Response for a single storage location."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: StorageData | None = None
     error: str | None = None
 
 
@@ -44,7 +45,7 @@ class PaginatedStorageResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[StorageData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -54,7 +55,7 @@ class StorageOperationResponse:
     """Response for storage modification operations."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: StorageData | None = None
     error: str | None = None
 
 
@@ -68,7 +69,7 @@ class PaginatedStoragePartsResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[SourceData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -83,7 +84,7 @@ class PaginatedStorageLotsResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[SourceData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -139,15 +140,20 @@ def list_storage_locations(
         Data items schema:
         {
             "type": "object",
+            "required": ["storage/id", "storage/name"],
             "properties": {
                 "storage/id": {"type": "string", "description": "Storage location identifier (26-char compact UUID)"},
                 "storage/name": {"type": "string", "description": "Storage location name"},
                 "storage/description": {"type": ["string", "null"], "description": "Storage location description"},
+                "storage/comments": {"type": ["string", "null"], "description": "Additional comments"},
+                "storage/parent-id": {"type": ["string", "null"], "description": "Parent storage location identifier"},
+                "storage/path": {"type": ["string", "null"], "description": "Full path of location"},
                 "storage/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
-                "storage/archived": {"type": "boolean", "description": "Whether location is archived"},
+                "storage/archived": {"type": "boolean", "description": "Whether location is archived (default: false)"},
                 "storage/full?": {"type": "boolean", "description": "Whether location accepts new stock"},
                 "storage/single-part?": {"type": "boolean", "description": "Single-part-only location"},
                 "storage/existing-parts-only?": {"type": "boolean", "description": "Restrict to existing parts only"},
+                "storage/created": {"type": ["integer", "null"], "description": "Creation timestamp (UNIX UTC milliseconds)"},
                 "storage/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
             }
         }
@@ -258,7 +264,28 @@ def get_storage_location(storage_id: str) -> StorageResponse:
         storage_id: The unique identifier of the storage location
 
     Returns:
-        StorageResponse with storage data or error
+        StorageResponse with storage data or error.
+
+        Data schema:
+        {
+            "type": "object",
+            "required": ["storage/id", "storage/name"],
+            "properties": {
+                "storage/id": {"type": "string", "description": "Storage location identifier (26-char compact UUID)"},
+                "storage/name": {"type": "string", "description": "Storage location name"},
+                "storage/description": {"type": ["string", "null"], "description": "Storage location description"},
+                "storage/comments": {"type": ["string", "null"], "description": "Additional comments"},
+                "storage/parent-id": {"type": ["string", "null"], "description": "Parent storage location identifier"},
+                "storage/path": {"type": ["string", "null"], "description": "Full path of location"},
+                "storage/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
+                "storage/archived": {"type": "boolean", "description": "Whether location is archived"},
+                "storage/full?": {"type": "boolean", "description": "Whether location accepts new stock"},
+                "storage/single-part?": {"type": "boolean", "description": "Single-part-only location"},
+                "storage/existing-parts-only?": {"type": "boolean", "description": "Restrict to existing parts only"},
+                "storage/created": {"type": ["integer", "null"], "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "storage/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if not storage_id:
         return StorageResponse(success=False, error="storage_id is required")
@@ -289,7 +316,10 @@ def update_storage_location(
         tags: Optional list of tags
 
     Returns:
-        StorageOperationResponse with the updated storage data
+        StorageOperationResponse with the operation result.
+
+        Note: The PartsBox API returns status information. Use get_storage_location()
+        to retrieve the updated storage data.
     """
     if not storage_id:
         return StorageOperationResponse(success=False, error="storage_id is required")
@@ -322,7 +352,10 @@ def rename_storage_location(
         new_name: The new name for the storage location
 
     Returns:
-        StorageOperationResponse with the updated storage data
+        StorageOperationResponse with the operation result.
+
+        Note: The PartsBox API returns status information. Use get_storage_location()
+        to retrieve the updated storage data.
     """
     if not storage_id:
         return StorageOperationResponse(success=False, error="storage_id is required")
@@ -351,7 +384,10 @@ def archive_storage_location(storage_id: str) -> StorageOperationResponse:
         storage_id: The unique identifier of the storage location
 
     Returns:
-        StorageOperationResponse with the result
+        StorageOperationResponse with the operation result.
+
+        Note: The PartsBox API returns status information. Use get_storage_location()
+        to verify the archive status.
     """
     if not storage_id:
         return StorageOperationResponse(success=False, error="storage_id is required")
@@ -373,7 +409,10 @@ def restore_storage_location(storage_id: str) -> StorageOperationResponse:
         storage_id: The unique identifier of the storage location
 
     Returns:
-        StorageOperationResponse with the result
+        StorageOperationResponse with the operation result.
+
+        Note: The PartsBox API returns status information. Use get_storage_location()
+        to verify the restore status.
     """
     if not storage_id:
         return StorageOperationResponse(success=False, error="storage_id is required")
@@ -431,14 +470,15 @@ def list_storage_parts(
         Data items schema:
         {
             "type": "object",
+            "required": ["source/part-id", "source/storage-id", "source/lot-id", "source/quantity"],
             "properties": {
-                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact form)"},
-                "source/storage-id": {"type": "string", "description": "Storage location identifier"},
-                "source/lot-id": {"type": "string", "description": "Lot identifier"},
-                "source/quantity": {"type": "integer", "description": "Stock quantity"},
-                "source/status": {"type": ["string", "null"], "description": "Stock status (ordered, reserved, allocated, in-production, in-transit, planned, rejected, being-ordered) or null for on-hand"},
-                "source/first-timestamp": {"type": "integer", "description": "UNIX timestamp (UTC) of oldest stock entry"},
-                "source/last-timestamp": {"type": "integer", "description": "UNIX timestamp (UTC) of most recent stock entry"}
+                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
+                "source/storage-id": {"type": "string", "description": "Storage location identifier (26-char compact UUID)"},
+                "source/lot-id": {"type": "string", "description": "Lot identifier (26-char compact UUID)"},
+                "source/quantity": {"type": "integer", "description": "Aggregated stock quantity"},
+                "source/status": {"type": ["string", "null"], "enum": ["ordered", "reserved", "allocated", "in-production", "in-transit", "planned", "rejected", "being-ordered", null], "description": "Stock status or null for on-hand stock"},
+                "source/first-timestamp": {"type": ["integer", "null"], "description": "Timestamp (UNIX UTC milliseconds) of oldest stock entry"},
+                "source/last-timestamp": {"type": ["integer", "null"], "description": "Timestamp (UNIX UTC milliseconds) of most recent stock entry"}
             }
         }
     """
@@ -594,14 +634,15 @@ def list_storage_lots(
         Data items schema:
         {
             "type": "object",
+            "required": ["source/part-id", "source/storage-id", "source/lot-id", "source/quantity"],
             "properties": {
-                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact form)"},
-                "source/storage-id": {"type": "string", "description": "Storage location identifier"},
-                "source/lot-id": {"type": "string", "description": "Lot identifier"},
-                "source/quantity": {"type": "integer", "description": "Stock quantity"},
-                "source/status": {"type": ["string", "null"], "description": "Stock status (ordered, reserved, allocated, in-production, in-transit, planned, rejected, being-ordered) or null for on-hand"},
-                "source/first-timestamp": {"type": "integer", "description": "UNIX timestamp (UTC) of oldest stock entry"},
-                "source/last-timestamp": {"type": "integer", "description": "UNIX timestamp (UTC) of most recent stock entry"}
+                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
+                "source/storage-id": {"type": "string", "description": "Storage location identifier (26-char compact UUID)"},
+                "source/lot-id": {"type": "string", "description": "Lot identifier (26-char compact UUID)"},
+                "source/quantity": {"type": "integer", "description": "Stock quantity for this lot"},
+                "source/status": {"type": ["string", "null"], "enum": ["ordered", "reserved", "allocated", "in-production", "in-transit", "planned", "rejected", "being-ordered", null], "description": "Stock status or null for on-hand stock"},
+                "source/first-timestamp": {"type": ["integer", "null"], "description": "Timestamp (UNIX UTC milliseconds) of oldest stock entry"},
+                "source/last-timestamp": {"type": ["integer", "null"], "description": "Timestamp (UNIX UTC milliseconds) of most recent stock entry"}
             }
         }
     """

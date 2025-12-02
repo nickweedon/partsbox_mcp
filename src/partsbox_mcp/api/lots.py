@@ -13,6 +13,7 @@ from typing import Any
 import requests
 
 from partsbox_mcp.client import api_client, apply_query, cache
+from partsbox_mcp.types import LotData
 
 
 # =============================================================================
@@ -25,7 +26,7 @@ class LotResponse:
     """Response for a single lot."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: LotData | None = None
     error: str | None = None
 
 
@@ -39,7 +40,7 @@ class PaginatedLotsResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[LotData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -49,7 +50,7 @@ class LotUpdateResponse:
     """Response for lot update operations."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: LotData | None = None
     error: str | None = None
 
 
@@ -101,16 +102,20 @@ def list_lots(
         Data items schema:
         {
             "type": "object",
+            "required": ["lot/id", "lot/created"],
             "properties": {
                 "lot/id": {"type": "string", "description": "Lot identifier (26-char compact UUID)"},
+                "lot/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC milliseconds)"},
                 "lot/name": {"type": ["string", "null"], "description": "Lot name or number"},
                 "lot/description": {"type": ["string", "null"], "description": "Short description"},
                 "lot/comments": {"type": ["string", "null"], "description": "Additional comments"},
-                "lot/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC)"},
-                "lot/expiration-date": {"type": ["integer", "null"], "description": "Expiration timestamp (UNIX UTC)"},
+                "lot/expiration-date": {"type": ["integer", "null"], "description": "Expiration timestamp (UNIX UTC milliseconds)"},
                 "lot/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
-                "lot/order-id": {"type": ["string", "null"], "description": "Linked order identifier"},
-                "lot/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+                "lot/order-id": {"type": ["string", "null"], "description": "Linked order identifier (26-char compact UUID)"},
+                "lot/custom-fields": {"type": ["object", "null"], "description": "Custom field data"},
+                "lot/part-id": {"type": ["string", "null"], "description": "Part identifier (contextual, when returned with stock info)"},
+                "lot/storage-id": {"type": ["string", "null"], "description": "Storage location identifier (contextual)"},
+                "lot/quantity": {"type": ["integer", "null"], "description": "Current quantity (contextual)"}
             }
         }
     """
@@ -216,7 +221,24 @@ def get_lot(lot_id: str) -> LotResponse:
         lot_id: The unique identifier of the lot
 
     Returns:
-        LotResponse with lot data or error
+        LotResponse with lot data or error.
+
+        Data schema:
+        {
+            "type": "object",
+            "required": ["lot/id", "lot/created"],
+            "properties": {
+                "lot/id": {"type": "string", "description": "Lot identifier (26-char compact UUID)"},
+                "lot/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "lot/name": {"type": ["string", "null"], "description": "Lot name or number"},
+                "lot/description": {"type": ["string", "null"], "description": "Short description"},
+                "lot/comments": {"type": ["string", "null"], "description": "Additional comments"},
+                "lot/expiration-date": {"type": ["integer", "null"], "description": "Expiration timestamp (UNIX UTC milliseconds)"},
+                "lot/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
+                "lot/order-id": {"type": ["string", "null"], "description": "Linked order identifier (26-char compact UUID)"},
+                "lot/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if not lot_id:
         return LotResponse(success=False, error="lot_id is required")
@@ -253,7 +275,24 @@ def update_lot(
         custom_fields: Optional custom field values
 
     Returns:
-        LotUpdateResponse with the updated lot data
+        LotUpdateResponse with the updated lot data.
+
+        Data schema:
+        {
+            "type": "object",
+            "required": ["lot/id", "lot/created"],
+            "properties": {
+                "lot/id": {"type": "string", "description": "Lot identifier (26-char compact UUID)"},
+                "lot/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "lot/name": {"type": ["string", "null"], "description": "Lot name or number"},
+                "lot/description": {"type": ["string", "null"], "description": "Short description"},
+                "lot/comments": {"type": ["string", "null"], "description": "Additional comments"},
+                "lot/expiration-date": {"type": ["integer", "null"], "description": "Expiration timestamp (UNIX UTC milliseconds)"},
+                "lot/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
+                "lot/order-id": {"type": ["string", "null"], "description": "Linked order identifier (26-char compact UUID)"},
+                "lot/custom-fields": {"type": ["object", "null"], "description": "Custom field data"}
+            }
+        }
     """
     if not lot_id:
         return LotUpdateResponse(success=False, error="lot_id is required")

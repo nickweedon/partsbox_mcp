@@ -13,7 +13,8 @@ from typing import Any
 
 import requests
 
-from partsbox_mcp.client import api_client, apply_query, cache
+from partsbox_mcp.client import api_client
+from partsbox_mcp.types import StockEntryData
 
 
 # =============================================================================
@@ -26,7 +27,7 @@ class StockOperationResponse:
     """Response for stock modification operations."""
 
     success: bool
-    data: dict[str, Any] | None = None
+    data: StockEntryData | None = None
     error: str | None = None
 
 
@@ -40,7 +41,7 @@ class PaginatedStockResponse:
     offset: int
     limit: int
     has_more: bool
-    data: list[Any]
+    data: list[StockEntryData]
     error: str | None = None
     query_applied: str | None = None
 
@@ -76,7 +77,18 @@ def add_stock(
         order_id: Optional order ID this stock came from
 
     Returns:
-        StockOperationResponse with the created stock entry
+        StockOperationResponse with the operation result.
+
+        Data schema (when successful, data may contain lot information):
+        {
+            "type": ["object", "null"],
+            "properties": {
+                "lot/id": {"type": "string", "description": "Created lot identifier (26-char compact UUID)"}
+            }
+        }
+
+        Note: The PartsBox API returns status information. Stock is not returned directly;
+        use list_parts() to see updated stock levels.
     """
     if not part_id:
         return StockOperationResponse(success=False, error="part_id is required")
@@ -129,7 +141,10 @@ def remove_stock(
         lot_id: Optional specific lot ID to remove from
 
     Returns:
-        StockOperationResponse with the result
+        StockOperationResponse with the operation result.
+
+        Note: The PartsBox API returns status information. Stock is not returned directly;
+        use list_parts() to see updated stock levels.
     """
     if not part_id:
         return StockOperationResponse(success=False, error="part_id is required")
@@ -176,7 +191,18 @@ def move_stock(
         lot_id: Optional specific lot ID to move from
 
     Returns:
-        StockOperationResponse with the result
+        StockOperationResponse with the operation result.
+
+        Data schema (when successful, may contain lot information):
+        {
+            "type": ["object", "null"],
+            "properties": {
+                "lot/id": {"type": "string", "description": "Created lot identifier at target location (26-char compact UUID)"}
+            }
+        }
+
+        Note: The PartsBox API returns status information. Stock is not returned directly;
+        use list_parts() to see updated stock levels.
     """
     if not part_id:
         return StockOperationResponse(success=False, error="part_id is required")
@@ -230,7 +256,10 @@ def update_stock(
         currency: Optional new currency code
 
     Returns:
-        StockOperationResponse with the updated stock entry
+        StockOperationResponse with the operation result.
+
+        Note: The PartsBox API returns status information. Stock is not returned directly;
+        use list_parts() to see updated stock levels.
     """
     if not part_id:
         return StockOperationResponse(success=False, error="part_id is required")
