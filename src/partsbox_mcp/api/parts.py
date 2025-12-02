@@ -98,7 +98,7 @@ def list_parts(
     cache_key: str | None = None,
     query: str | None = None,
 ) -> PaginatedPartsResponse:
-    """List all parts with optional JMESPath query and pagination."""
+    """List all parts with pagination and optional JMESPath query."""
     # Validate parameters
     if limit < 1 or limit > 1000:
         return PaginatedPartsResponse(
@@ -199,7 +199,7 @@ def list_parts(
 
 
 def get_part(part_id: str) -> PartResponse:
-    """Get detailed information for a specific part."""
+    """Get a specific part by ID."""
     if not part_id:
         return PartResponse(
             success=False,
@@ -239,40 +239,7 @@ def create_part(
     attrition_quantity: int | None = None,
     custom_fields: dict[str, Any] | None = None,
 ) -> PartOperationResponse:
-    """
-    Create a new part.
-
-    Args:
-        name: The part name (required)
-        part_type: Type of part - "local", "linked", "sub-assembly", or "meta" (default "local")
-        description: Optional part description
-        notes: Optional user notes (Markdown supported)
-        footprint: Optional physical package footprint
-        manufacturer: Optional manufacturer name
-        mpn: Optional manufacturer part number
-        tags: Optional list of tags
-        cad_keys: Optional CAD keys for matching
-        low_stock_threshold: Optional low stock warning threshold
-        attrition_percentage: Optional attrition percentage for manufacturing
-        attrition_quantity: Optional fixed attrition quantity for manufacturing
-        custom_fields: Optional custom field values
-
-    Returns:
-        PartOperationResponse with the created part data.
-
-        Data schema:
-        {
-            "type": "object",
-            "required": ["part/id", "part/name", "part/type", "part/created", "part/owner"],
-            "properties": {
-                "part/id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
-                "part/name": {"type": "string", "description": "Part name or internal identifier"},
-                "part/type": {"type": "string", "enum": ["local", "linked", "sub-assembly", "meta"]},
-                "part/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC milliseconds)"},
-                "part/owner": {"type": "string", "description": "Owner identifier"}
-            }
-        }
-    """
+    """Create a new part."""
     if not name:
         return PartOperationResponse(success=False, error="name is required")
 
@@ -336,40 +303,7 @@ def update_part(
     attrition_quantity: int | None = None,
     custom_fields: dict[str, Any] | None = None,
 ) -> PartOperationResponse:
-    """
-    Update an existing part.
-
-    Args:
-        part_id: The unique identifier of the part (required)
-        name: Optional new name
-        description: Optional new description
-        notes: Optional new notes (Markdown supported)
-        footprint: Optional new footprint
-        manufacturer: Optional new manufacturer name
-        mpn: Optional new manufacturer part number
-        tags: Optional new list of tags (replaces existing)
-        cad_keys: Optional new CAD keys (replaces existing)
-        low_stock_threshold: Optional new low stock warning threshold
-        attrition_percentage: Optional new attrition percentage
-        attrition_quantity: Optional new fixed attrition quantity
-        custom_fields: Optional custom field values to update
-
-    Returns:
-        PartOperationResponse with the updated part data.
-
-        Data schema:
-        {
-            "type": "object",
-            "required": ["part/id", "part/name", "part/type", "part/created", "part/owner"],
-            "properties": {
-                "part/id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
-                "part/name": {"type": "string", "description": "Part name or internal identifier"},
-                "part/type": {"type": "string", "enum": ["local", "linked", "sub-assembly", "meta"]},
-                "part/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC milliseconds)"},
-                "part/owner": {"type": "string", "description": "Owner identifier"}
-            }
-        }
-    """
+    """Update an existing part."""
     if not part_id:
         return PartOperationResponse(success=False, error="part_id is required")
 
@@ -411,17 +345,7 @@ def update_part(
 
 
 def delete_part(part_id: str) -> PartOperationResponse:
-    """
-    Delete a part.
-
-    Args:
-        part_id: The unique identifier of the part to delete
-
-    Returns:
-        PartOperationResponse with the result.
-
-        Note: The PartsBox API returns status information. Data may be null on success.
-    """
+    """Delete a part."""
     if not part_id:
         return PartOperationResponse(success=False, error="part_id is required")
 
@@ -436,21 +360,7 @@ def add_meta_part_ids(
     part_id: str,
     member_ids: list[str],
 ) -> PartOperationResponse:
-    """
-    Add equivalent substitutes (members) to a meta-part.
-
-    Meta-parts are virtual parts that group together equivalent alternatives.
-    This function adds parts as members of the meta-part.
-
-    Args:
-        part_id: The meta-part identifier
-        member_ids: List of part IDs to add as members of the meta-part
-
-    Returns:
-        PartOperationResponse with the result.
-
-        Note: The PartsBox API returns status information. Data may be null on success.
-    """
+    """Add members to a meta-part."""
     if not part_id:
         return PartOperationResponse(success=False, error="part_id is required")
     if not member_ids:
@@ -472,18 +382,7 @@ def remove_meta_part_ids(
     part_id: str,
     member_ids: list[str],
 ) -> PartOperationResponse:
-    """
-    Remove members from a meta-part.
-
-    Args:
-        part_id: The meta-part identifier
-        member_ids: List of part IDs to remove from the meta-part
-
-    Returns:
-        PartOperationResponse with the result.
-
-        Note: The PartsBox API returns status information. Data may be null on success.
-    """
+    """Remove members from a meta-part."""
     if not part_id:
         return PartOperationResponse(success=False, error="part_id is required")
     if not member_ids:
@@ -505,22 +404,7 @@ def add_substitute_ids(
     part_id: str,
     substitute_ids: list[str],
 ) -> PartOperationResponse:
-    """
-    Add substitutes to a part.
-
-    Substitutes are alternative parts that can be used in place of this part.
-    Unlike meta-parts, substitutes are directional - Part A can have Part B
-    as a substitute without Part B having Part A as a substitute.
-
-    Args:
-        part_id: The part identifier
-        substitute_ids: List of part IDs to add as substitutes
-
-    Returns:
-        PartOperationResponse with the result.
-
-        Note: The PartsBox API returns status information. Data may be null on success.
-    """
+    """Add substitutes to a part."""
     if not part_id:
         return PartOperationResponse(success=False, error="part_id is required")
     if not substitute_ids:
@@ -542,18 +426,7 @@ def remove_substitute_ids(
     part_id: str,
     substitute_ids: list[str],
 ) -> PartOperationResponse:
-    """
-    Remove substitutes from a part.
-
-    Args:
-        part_id: The part identifier
-        substitute_ids: List of part IDs to remove as substitutes
-
-    Returns:
-        PartOperationResponse with the result.
-
-        Note: The PartsBox API returns status information. Data may be null on success.
-    """
+    """Remove substitutes from a part."""
     if not part_id:
         return PartOperationResponse(success=False, error="part_id is required")
     if not substitute_ids:
@@ -578,53 +451,7 @@ def get_part_storage(
     cache_key: str | None = None,
     query: str | None = None,
 ) -> PaginatedSourcesResponse:
-    """
-    List stock sources for a part, aggregating lots by storage location.
-
-    This returns aggregated stock data showing where a part is stored
-    and how much is in each location. Lots at the same location are
-    combined into a single entry.
-
-    Args:
-        part_id: The part identifier
-        limit: Maximum items to return (1-1000, default 50)
-        offset: Starting index in query results (default 0)
-        cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection with custom functions.
-
-            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "source/quantity").
-            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
-            - CORRECT: "source/quantity", "source/storage-id", "source/status"
-            - WRONG: `source/quantity` (backticks create literal strings, not field references)
-
-            Standard JMESPath examples:
-            - "[?\"source/quantity\" > `100`]" - locations with quantity > 100
-            - "sort_by(@, &\"source/quantity\")" - sort by quantity
-
-            Custom functions available:
-            - nvl(value, default): Returns default if value is null
-            - int(value): Convert to integer (returns null on failure)
-            - str(value): Convert to string
-            - regex_replace(pattern, replacement, value): Regex substitution
-
-    Returns:
-        PaginatedSourcesResponse with aggregated stock sources.
-
-        Data items schema:
-        {
-            "type": "object",
-            "required": ["source/part-id", "source/storage-id", "source/quantity"],
-            "properties": {
-                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
-                "source/storage-id": {"type": "string", "description": "Storage location identifier"},
-                "source/lot-id": {"type": ["string", "null"], "description": "Lot identifier (null when aggregated)"},
-                "source/quantity": {"type": "integer", "description": "Aggregated stock quantity at this location"},
-                "source/status": {"type": ["string", "null"], "enum": ["ordered", "reserved", "allocated", "in-production", "in-transit", "planned", "rejected", "being-ordered", null]},
-                "source/first-timestamp": {"type": ["integer", "null"], "description": "Timestamp of oldest stock entry"},
-                "source/last-timestamp": {"type": ["integer", "null"], "description": "Timestamp of most recent stock entry"}
-            }
-        }
-    """
+    """List stock sources for a part, aggregating lots by storage location."""
     if not part_id:
         return PaginatedSourcesResponse(
             success=False,
@@ -738,52 +565,7 @@ def get_part_lots(
     cache_key: str | None = None,
     query: str | None = None,
 ) -> PaginatedSourcesResponse:
-    """
-    List stock sources for a part without aggregating lots.
-
-    Unlike get_part_storage(), this returns individual lot entries
-    without combining them. Each lot at each location is a separate entry.
-
-    Args:
-        part_id: The part identifier
-        limit: Maximum items to return (1-1000, default 50)
-        offset: Starting index in query results (default 0)
-        cache_key: Reuse cached data from previous call. Omit for fresh fetch.
-        query: JMESPath expression for filtering/projection with custom functions.
-
-            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "source/quantity").
-            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
-            - CORRECT: "source/quantity", "source/lot-id", "source/status"
-            - WRONG: `source/quantity` (backticks create literal strings, not field references)
-
-            Standard JMESPath examples:
-            - "[?\"source/quantity\" > `0`]" - lots with positive quantity
-            - "sort_by(@, &\"source/last-timestamp\")" - sort by last update
-
-            Custom functions available:
-            - nvl(value, default): Returns default if value is null
-            - int(value): Convert to integer (returns null on failure)
-            - str(value): Convert to string
-            - regex_replace(pattern, replacement, value): Regex substitution
-
-    Returns:
-        PaginatedSourcesResponse with individual lot stock sources.
-
-        Data items schema:
-        {
-            "type": "object",
-            "required": ["source/part-id", "source/storage-id", "source/lot-id", "source/quantity"],
-            "properties": {
-                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
-                "source/storage-id": {"type": "string", "description": "Storage location identifier"},
-                "source/lot-id": {"type": "string", "description": "Lot identifier (26-char compact UUID)"},
-                "source/quantity": {"type": "integer", "description": "Stock quantity for this lot"},
-                "source/status": {"type": ["string", "null"], "enum": ["ordered", "reserved", "allocated", "in-production", "in-transit", "planned", "rejected", "being-ordered", null]},
-                "source/first-timestamp": {"type": ["integer", "null"], "description": "Timestamp of oldest stock entry"},
-                "source/last-timestamp": {"type": ["integer", "null"], "description": "Timestamp of most recent stock entry"}
-            }
-        }
-    """
+    """List stock sources for a part without aggregating lots."""
     if not part_id:
         return PaginatedSourcesResponse(
             success=False,
@@ -891,25 +673,7 @@ def get_part_lots(
 
 
 def get_part_stock(part_id: str) -> PartStockResponse:
-    """
-    Get the total stock count for a part.
-
-    This returns the calculated total quantity of a part across all
-    storage locations and lots.
-
-    Args:
-        part_id: The part identifier
-
-    Returns:
-        PartStockResponse with the total stock count.
-
-        Response schema:
-        {
-            "success": true,
-            "total": 1500,
-            "error": null
-        }
-    """
+    """Get the total stock count for a part."""
     if not part_id:
         return PartStockResponse(success=False, error="part_id is required")
 

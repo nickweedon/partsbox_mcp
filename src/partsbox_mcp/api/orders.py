@@ -586,20 +586,7 @@ def delete_order_entry(
     order_id: str,
     stock_id: str,
 ) -> OrderOperationResponse:
-    """
-    Delete an entry from an open order.
-
-    This removes a line item from an order that has not yet been received.
-
-    Args:
-        order_id: The order ID
-        stock_id: The stock entry ID to delete (obtained from order/get-entries)
-
-    Returns:
-        OrderOperationResponse with the result.
-
-        Note: The PartsBox API returns status information. Data may be null on success.
-    """
+    """Delete an entry from an open order."""
     if not order_id:
         return OrderOperationResponse(success=False, error="order_id is required")
     if not stock_id:

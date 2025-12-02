@@ -9,7 +9,8 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-from partsbox_mcp.api import lots, orders, parts, projects, stock, storage
+from partsbox_mcp.api import files, lots, orders, parts, projects, stock, storage
+from partsbox_mcp.api.files import FileDownloadResponse
 from partsbox_mcp.client import CacheInfo, cache
 
 # =============================================================================
@@ -208,6 +209,394 @@ def get_part(part_id: str) -> parts.PartResponse:
         }
     """
     return parts.get_part(part_id)
+
+
+@mcp.tool()
+def create_part(
+    name: str,
+    part_type: str = "local",
+    description: str | None = None,
+    notes: str | None = None,
+    footprint: str | None = None,
+    manufacturer: str | None = None,
+    mpn: str | None = None,
+    tags: list[str] | None = None,
+    cad_keys: list[str] | None = None,
+    low_stock_threshold: int | None = None,
+    attrition_percentage: float | None = None,
+    attrition_quantity: int | None = None,
+    custom_fields: dict[str, Any] | None = None,
+) -> parts.PartOperationResponse:
+    """
+    Create a new part.
+
+    Args:
+        name: The part name (required)
+        part_type: Type of part - "local", "linked", "sub-assembly", or "meta" (default "local")
+        description: Optional part description
+        notes: Optional user notes (Markdown supported)
+        footprint: Optional physical package footprint
+        manufacturer: Optional manufacturer name
+        mpn: Optional manufacturer part number
+        tags: Optional list of tags
+        cad_keys: Optional CAD keys for matching
+        low_stock_threshold: Optional low stock warning threshold
+        attrition_percentage: Optional attrition percentage for manufacturing
+        attrition_quantity: Optional fixed attrition quantity for manufacturing
+        custom_fields: Optional custom field values
+
+    Returns:
+        PartOperationResponse with the created part data.
+
+        Data schema:
+        {
+            "type": "object",
+            "required": ["part/id", "part/name", "part/type", "part/created", "part/owner"],
+            "properties": {
+                "part/id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
+                "part/name": {"type": "string", "description": "Part name or internal identifier"},
+                "part/type": {"type": "string", "enum": ["local", "linked", "sub-assembly", "meta"]},
+                "part/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "part/owner": {"type": "string", "description": "Owner identifier"}
+            }
+        }
+    """
+    return parts.create_part(
+        name=name,
+        part_type=part_type,
+        description=description,
+        notes=notes,
+        footprint=footprint,
+        manufacturer=manufacturer,
+        mpn=mpn,
+        tags=tags,
+        cad_keys=cad_keys,
+        low_stock_threshold=low_stock_threshold,
+        attrition_percentage=attrition_percentage,
+        attrition_quantity=attrition_quantity,
+        custom_fields=custom_fields,
+    )
+
+
+@mcp.tool()
+def update_part(
+    part_id: str,
+    name: str | None = None,
+    description: str | None = None,
+    notes: str | None = None,
+    footprint: str | None = None,
+    manufacturer: str | None = None,
+    mpn: str | None = None,
+    tags: list[str] | None = None,
+    cad_keys: list[str] | None = None,
+    low_stock_threshold: int | None = None,
+    attrition_percentage: float | None = None,
+    attrition_quantity: int | None = None,
+    custom_fields: dict[str, Any] | None = None,
+) -> parts.PartOperationResponse:
+    """
+    Update an existing part.
+
+    Args:
+        part_id: The unique identifier of the part (required)
+        name: Optional new name
+        description: Optional new description
+        notes: Optional new notes (Markdown supported)
+        footprint: Optional new footprint
+        manufacturer: Optional new manufacturer name
+        mpn: Optional new manufacturer part number
+        tags: Optional new list of tags (replaces existing)
+        cad_keys: Optional new CAD keys (replaces existing)
+        low_stock_threshold: Optional new low stock warning threshold
+        attrition_percentage: Optional new attrition percentage
+        attrition_quantity: Optional new fixed attrition quantity
+        custom_fields: Optional custom field values to update
+
+    Returns:
+        PartOperationResponse with the updated part data.
+
+        Data schema:
+        {
+            "type": "object",
+            "required": ["part/id", "part/name", "part/type", "part/created", "part/owner"],
+            "properties": {
+                "part/id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
+                "part/name": {"type": "string", "description": "Part name or internal identifier"},
+                "part/type": {"type": "string", "enum": ["local", "linked", "sub-assembly", "meta"]},
+                "part/created": {"type": "integer", "description": "Creation timestamp (UNIX UTC milliseconds)"},
+                "part/owner": {"type": "string", "description": "Owner identifier"}
+            }
+        }
+    """
+    return parts.update_part(
+        part_id=part_id,
+        name=name,
+        description=description,
+        notes=notes,
+        footprint=footprint,
+        manufacturer=manufacturer,
+        mpn=mpn,
+        tags=tags,
+        cad_keys=cad_keys,
+        low_stock_threshold=low_stock_threshold,
+        attrition_percentage=attrition_percentage,
+        attrition_quantity=attrition_quantity,
+        custom_fields=custom_fields,
+    )
+
+
+@mcp.tool()
+def delete_part(part_id: str) -> parts.PartOperationResponse:
+    """
+    Delete a part.
+
+    Args:
+        part_id: The unique identifier of the part to delete
+
+    Returns:
+        PartOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
+    """
+    return parts.delete_part(part_id)
+
+
+@mcp.tool()
+def add_meta_part_ids(
+    part_id: str,
+    member_ids: list[str],
+) -> parts.PartOperationResponse:
+    """
+    Add equivalent substitutes (members) to a meta-part.
+
+    Meta-parts are virtual parts that group together equivalent alternatives.
+    This function adds parts as members of the meta-part.
+
+    Args:
+        part_id: The meta-part identifier
+        member_ids: List of part IDs to add as members of the meta-part
+
+    Returns:
+        PartOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
+    """
+    return parts.add_meta_part_ids(part_id=part_id, member_ids=member_ids)
+
+
+@mcp.tool()
+def remove_meta_part_ids(
+    part_id: str,
+    member_ids: list[str],
+) -> parts.PartOperationResponse:
+    """
+    Remove members from a meta-part.
+
+    Args:
+        part_id: The meta-part identifier
+        member_ids: List of part IDs to remove from the meta-part
+
+    Returns:
+        PartOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
+    """
+    return parts.remove_meta_part_ids(part_id=part_id, member_ids=member_ids)
+
+
+@mcp.tool()
+def add_substitute_ids(
+    part_id: str,
+    substitute_ids: list[str],
+) -> parts.PartOperationResponse:
+    """
+    Add substitutes to a part.
+
+    Substitutes are alternative parts that can be used in place of this part.
+    Unlike meta-parts, substitutes are directional - Part A can have Part B
+    as a substitute without Part B having Part A as a substitute.
+
+    Args:
+        part_id: The part identifier
+        substitute_ids: List of part IDs to add as substitutes
+
+    Returns:
+        PartOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
+    """
+    return parts.add_substitute_ids(part_id=part_id, substitute_ids=substitute_ids)
+
+
+@mcp.tool()
+def remove_substitute_ids(
+    part_id: str,
+    substitute_ids: list[str],
+) -> parts.PartOperationResponse:
+    """
+    Remove substitutes from a part.
+
+    Args:
+        part_id: The part identifier
+        substitute_ids: List of part IDs to remove as substitutes
+
+    Returns:
+        PartOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
+    """
+    return parts.remove_substitute_ids(part_id=part_id, substitute_ids=substitute_ids)
+
+
+@mcp.tool()
+def get_part_storage(
+    part_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    cache_key: str | None = None,
+    query: str | None = None,
+) -> parts.PaginatedSourcesResponse:
+    """
+    List stock sources for a part, aggregating lots by storage location.
+
+    This returns aggregated stock data showing where a part is stored
+    and how much is in each location. Lots at the same location are
+    combined into a single entry.
+
+    Args:
+        part_id: The part identifier
+        limit: Maximum items to return (1-1000, default 50)
+        offset: Starting index in query results (default 0)
+        cache_key: Reuse cached data from previous call. Omit for fresh fetch.
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "source/quantity").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "source/quantity", "source/storage-id", "source/status"
+            - WRONG: `source/quantity` (backticks create literal strings, not field references)
+
+            Standard JMESPath examples:
+            - "[?\"source/quantity\" > `100`]" - locations with quantity > 100
+            - "sort_by(@, &\"source/quantity\")" - sort by quantity
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+    Returns:
+        PaginatedSourcesResponse with aggregated stock sources.
+
+        Data items schema:
+        {
+            "type": "object",
+            "required": ["source/part-id", "source/storage-id", "source/quantity"],
+            "properties": {
+                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
+                "source/storage-id": {"type": "string", "description": "Storage location identifier"},
+                "source/lot-id": {"type": ["string", "null"], "description": "Lot identifier (null when aggregated)"},
+                "source/quantity": {"type": "integer", "description": "Aggregated stock quantity at this location"},
+                "source/status": {"type": ["string", "null"], "enum": ["ordered", "reserved", "allocated", "in-production", "in-transit", "planned", "rejected", "being-ordered", null]},
+                "source/first-timestamp": {"type": ["integer", "null"], "description": "Timestamp of oldest stock entry"},
+                "source/last-timestamp": {"type": ["integer", "null"], "description": "Timestamp of most recent stock entry"}
+            }
+        }
+    """
+    return parts.get_part_storage(
+        part_id=part_id,
+        limit=limit,
+        offset=offset,
+        cache_key=cache_key,
+        query=query,
+    )
+
+
+@mcp.tool()
+def get_part_lots(
+    part_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    cache_key: str | None = None,
+    query: str | None = None,
+) -> parts.PaginatedSourcesResponse:
+    """
+    List stock sources for a part without aggregating lots.
+
+    Unlike get_part_storage(), this returns individual lot entries
+    without combining them. Each lot at each location is a separate entry.
+
+    Args:
+        part_id: The part identifier
+        limit: Maximum items to return (1-1000, default 50)
+        offset: Starting index in query results (default 0)
+        cache_key: Reuse cached data from previous call. Omit for fresh fetch.
+        query: JMESPath expression for filtering/projection with custom functions.
+
+            CRITICAL SYNTAX NOTE: Field names contain '/' characters (e.g., "source/quantity").
+            You MUST use DOUBLE QUOTES for field identifiers, NOT backticks:
+            - CORRECT: "source/quantity", "source/lot-id", "source/status"
+            - WRONG: `source/quantity` (backticks create literal strings, not field references)
+
+            Standard JMESPath examples:
+            - "[?\"source/quantity\" > `0`]" - lots with positive quantity
+            - "sort_by(@, &\"source/last-timestamp\")" - sort by last update
+
+            Custom functions available:
+            - nvl(value, default): Returns default if value is null
+            - int(value): Convert to integer (returns null on failure)
+            - str(value): Convert to string
+            - regex_replace(pattern, replacement, value): Regex substitution
+
+    Returns:
+        PaginatedSourcesResponse with individual lot stock sources.
+
+        Data items schema:
+        {
+            "type": "object",
+            "required": ["source/part-id", "source/storage-id", "source/lot-id", "source/quantity"],
+            "properties": {
+                "source/part-id": {"type": "string", "description": "Part identifier (26-char compact UUID)"},
+                "source/storage-id": {"type": "string", "description": "Storage location identifier"},
+                "source/lot-id": {"type": "string", "description": "Lot identifier (26-char compact UUID)"},
+                "source/quantity": {"type": "integer", "description": "Stock quantity for this lot"},
+                "source/status": {"type": ["string", "null"], "enum": ["ordered", "reserved", "allocated", "in-production", "in-transit", "planned", "rejected", "being-ordered", null]},
+                "source/first-timestamp": {"type": ["integer", "null"], "description": "Timestamp of oldest stock entry"},
+                "source/last-timestamp": {"type": ["integer", "null"], "description": "Timestamp of most recent stock entry"}
+            }
+        }
+    """
+    return parts.get_part_lots(
+        part_id=part_id,
+        limit=limit,
+        offset=offset,
+        cache_key=cache_key,
+        query=query,
+    )
+
+
+@mcp.tool()
+def get_part_stock(part_id: str) -> parts.PartStockResponse:
+    """
+    Get the total stock count for a part.
+
+    This returns the calculated total quantity of a part across all
+    storage locations and lots.
+
+    Args:
+        part_id: The part identifier
+
+    Returns:
+        PartStockResponse with the total stock count.
+
+        Response schema:
+        {
+            "success": true,
+            "total": 1500,
+            "error": null
+        }
+    """
+    return parts.get_part_stock(part_id)
 
 
 # =============================================================================
@@ -736,6 +1125,38 @@ def restore_storage_location(storage_id: str) -> storage.StorageOperationRespons
         to verify the restore status.
     """
     return storage.restore_storage_location(storage_id)
+
+
+@mcp.tool()
+def change_storage_settings(
+    storage_id: str,
+    full: bool | None = None,
+    single_part: bool | None = None,
+    existing_parts_only: bool | None = None,
+) -> storage.StorageOperationResponse:
+    """
+    Modify storage location settings.
+
+    These settings control what can be stored in this location.
+
+    Args:
+        storage_id: The unique identifier of the storage location
+        full: If True, the location won't accept new stock (marked as full)
+        single_part: If True, the location can only contain a single part type
+        existing_parts_only: If True, only parts already in the location can be added
+
+    Returns:
+        StorageOperationResponse with the operation result.
+
+        Note: The PartsBox API returns status information. Use get_storage_location()
+        to verify the updated settings.
+    """
+    return storage.change_storage_settings(
+        storage_id=storage_id,
+        full=full,
+        single_part=single_part,
+        existing_parts_only=existing_parts_only,
+    )
 
 
 @mcp.tool()
@@ -1652,6 +2073,64 @@ def receive_order(
         entries=entries,
         comments=comments,
     )
+
+
+@mcp.tool()
+def delete_order_entry(
+    order_id: str,
+    stock_id: str,
+) -> orders.OrderOperationResponse:
+    """
+    Delete an entry from an open order.
+
+    This removes a line item from an order that has not yet been received.
+
+    Args:
+        order_id: The order ID
+        stock_id: The stock entry ID to delete (obtained from order/get-entries)
+
+    Returns:
+        OrderOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
+    """
+    return orders.delete_order_entry(order_id=order_id, stock_id=stock_id)
+
+
+# =============================================================================
+# Files Tools
+# =============================================================================
+
+
+@mcp.tool()
+def download_file(file_id: str) -> FileDownloadResponse:
+    """
+    Download a file from PartsBox.
+
+    Files in PartsBox are typically images or datasheets associated with parts.
+    The file_id can be obtained from part data (e.g., part/img-id field).
+
+    Args:
+        file_id: The file identifier (obtained from part data, e.g., part/img-id)
+
+    Returns:
+        FileDownloadResponse containing:
+        - success: Whether the download succeeded
+        - data: Raw file bytes (if successful)
+        - content_type: MIME type of the file (e.g., "image/png", "application/pdf")
+        - filename: Suggested filename from server (if provided)
+        - error: Error message (if failed)
+
+    Example:
+        # Get a part and download its image
+        part = get_part("part_abc123")
+        if part.data and part.data.get("part/img-id"):
+            file_result = download_file(part.data["part/img-id"])
+            if file_result.success:
+                with open("part_image.png", "wb") as f:
+                    f.write(file_result.data)
+    """
+    return files.download_file(file_id)
 
 
 # =============================================================================

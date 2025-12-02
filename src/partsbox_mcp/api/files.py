@@ -34,32 +34,7 @@ class FileDownloadResponse:
 
 
 def download_file(file_id: str) -> FileDownloadResponse:
-    """
-    Download a file from PartsBox.
-
-    Files in PartsBox are typically images or datasheets associated with parts.
-    The file_id can be obtained from part data (e.g., part/img-id field).
-
-    Args:
-        file_id: The file identifier (obtained from part data, e.g., part/img-id)
-
-    Returns:
-        FileDownloadResponse containing:
-        - success: Whether the download succeeded
-        - data: Raw file bytes (if successful)
-        - content_type: MIME type of the file (e.g., "image/png", "application/pdf")
-        - filename: Suggested filename from server (if provided)
-        - error: Error message (if failed)
-
-    Example:
-        # Get a part and download its image
-        part = get_part("part_abc123")
-        if part.data and part.data.get("part/img-id"):
-            file_result = download_file(part.data["part/img-id"])
-            if file_result.success:
-                with open("part_image.png", "wb") as f:
-                    f.write(file_result.data)
-    """
+    """Download a file from PartsBox."""
     if not file_id:
         return FileDownloadResponse(success=False, error="file_id is required")
 

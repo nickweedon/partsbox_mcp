@@ -433,23 +433,7 @@ def change_storage_settings(
     single_part: bool | None = None,
     existing_parts_only: bool | None = None,
 ) -> StorageOperationResponse:
-    """
-    Modify storage location settings.
-
-    These settings control what can be stored in this location.
-
-    Args:
-        storage_id: The unique identifier of the storage location
-        full: If True, the location won't accept new stock (marked as full)
-        single_part: If True, the location can only contain a single part type
-        existing_parts_only: If True, only parts already in the location can be added
-
-    Returns:
-        StorageOperationResponse with the operation result.
-
-        Note: The PartsBox API returns status information. Use get_storage_location()
-        to verify the updated settings.
-    """
+    """Modify storage location settings."""
     if not storage_id:
         return StorageOperationResponse(success=False, error="storage_id is required")
 
