@@ -92,3 +92,6 @@ logs/
 
 # Claude Code
 .claude/settings.local.json
+
+# Test output
+test-output/
