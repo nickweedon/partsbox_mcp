@@ -217,21 +217,9 @@ Rate limits may be enforced. Plan for potential rate limiting in your usage.
 - Commercial plan users receive standard support
 - Free account users should not expect email responses
 
-## Claude Desktop Integration
+## Claude Integration
 
-Add this to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
-
-```json
-{
-  "mcpServers": {
-    "partsbox": {
-      "command": "uv",
-      "args": ["run", "python", "partsbox_mcp_server.py"],
-      "cwd": "/path/to/partsbox_mcp"
-    }
-  }
-}
-```
+This MCP server works with Claude Desktop and Claude Code (CLI). See [UsingMCPServer.md](UsingMCPServer.md) for detailed configuration instructions.
 
 ## Related Resources
 
