@@ -836,6 +836,90 @@ class FakePartsBoxAPI:
             callback=self._handle_order_receive,
             content_type="application/json",
         )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/order/delete-entry",
+            callback=self._handle_order_delete_entry,
+            content_type="application/json",
+        )
+
+        # Part modification endpoints
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/create",
+            callback=self._handle_part_create,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/update",
+            callback=self._handle_part_update,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/delete",
+            callback=self._handle_part_delete,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/add-meta-part-ids",
+            callback=self._handle_part_meta_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/remove-meta-part-ids",
+            callback=self._handle_part_meta_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/add-substitute-ids",
+            callback=self._handle_part_substitute_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/remove-substitute-ids",
+            callback=self._handle_part_substitute_operation,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/storage",
+            callback=self._handle_part_storage,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/lots",
+            callback=self._handle_part_lots,
+            content_type="application/json",
+        )
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/part/stock",
+            callback=self._handle_part_stock,
+            content_type="application/json",
+        )
+
+        # Storage settings endpoint
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/storage/change-settings",
+            callback=self._handle_storage_change_settings,
+            content_type="application/json",
+        )
+
+        # File endpoints
+        self._mock.add_callback(
+            responses.POST,
+            f"{self.BASE_URL}/file/download",
+            callback=self._handle_file_download,
+            content_type="application/octet-stream",
+        )
 
     def _handle_part_get(self, request: Any) -> tuple[int, dict[str, str], str]:
         """Handle part/get requests dynamically."""
@@ -1205,6 +1289,316 @@ class FakePartsBoxAPI:
             return (200, {}, json.dumps(build_success_response({"status": "received"})))
         except Exception as e:
             return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_order_delete_entry(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle order/delete-entry requests."""
+        try:
+            body = json.loads(request.body)
+            order_id = body.get("order/id")
+            stock_id = body.get("stock/id")
+
+            if not order_id:
+                return (400, {}, json.dumps(build_error_response("order/id is required")))
+            if not stock_id:
+                return (400, {}, json.dumps(build_error_response("stock/id is required")))
+
+            # Check if order exists
+            order_found = any(o["order/id"] == order_id for o in self._orders)
+            if not order_found:
+                return (404, {}, json.dumps(build_error_response(f"Order not found: {order_id}")))
+
+            # Check if entry exists and remove it
+            entries = self._order_entries.get(order_id, [])
+            for i, entry in enumerate(entries):
+                if entry.get("stock/id") == stock_id:
+                    entries.pop(i)
+                    return (200, {}, json.dumps(build_success_response({"status": "deleted"})))
+
+            return (404, {}, json.dumps(build_error_response(f"Entry not found: {stock_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_part_create(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle part/create requests."""
+        try:
+            body = json.loads(request.body)
+            name = body.get("part/name")
+
+            if not name:
+                return (400, {}, json.dumps(build_error_response("part/name is required")))
+
+            new_part = {
+                "part/id": f"part_{int(time.time())}",
+                "part/name": name,
+                "part/type": body.get("part/type", "local"),
+                "part/description": body.get("part/description"),
+                "part/manufacturer": body.get("part/manufacturer"),
+                "part/mpn": body.get("part/mpn"),
+                "part/footprint": body.get("part/footprint"),
+                "part/notes": body.get("part/notes"),
+                "part/tags": body.get("part/tags", []),
+                "part/cad-keys": body.get("part/cad-keys", []),
+                "part/created": int(time.time() * 1000),
+                "part/owner": "owner_001",
+                "part/img-id": None,
+                "part/custom-fields": body.get("part/custom"),
+                "part/stock": [],
+            }
+            if body.get("part/low-stock"):
+                new_part["part/low-stock"] = body["part/low-stock"]
+            if body.get("part/attrition"):
+                new_part["part/attrition"] = body["part/attrition"]
+
+            self._parts.append(new_part)
+            return (200, {}, json.dumps(build_success_response(new_part)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_part_update(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle part/update requests."""
+        try:
+            body = json.loads(request.body)
+            part_id = body.get("part/id")
+
+            if not part_id:
+                return (400, {}, json.dumps(build_error_response("part/id is required")))
+
+            for part in self._parts:
+                if part["part/id"] == part_id:
+                    # Update fields that are provided
+                    for key in ["part/name", "part/description", "part/notes", "part/footprint",
+                                "part/manufacturer", "part/mpn", "part/tags", "part/cad-keys",
+                                "part/low-stock", "part/attrition", "part/custom"]:
+                        if key in body:
+                            part[key] = body[key]
+                    return (200, {}, json.dumps(build_success_response(part)))
+
+            return (404, {}, json.dumps(build_error_response(f"Part not found: {part_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_part_delete(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle part/delete requests."""
+        try:
+            body = json.loads(request.body)
+            part_id = body.get("part/id")
+
+            if not part_id:
+                return (400, {}, json.dumps(build_error_response("part/id is required")))
+
+            for i, part in enumerate(self._parts):
+                if part["part/id"] == part_id:
+                    self._parts.pop(i)
+                    return (200, {}, json.dumps(build_success_response({"status": "deleted"})))
+
+            return (404, {}, json.dumps(build_error_response(f"Part not found: {part_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_part_meta_operation(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle part/add-meta-part-ids and part/remove-meta-part-ids requests."""
+        try:
+            body = json.loads(request.body)
+            part_id = body.get("part/id")
+            meta_ids = body.get("part/meta-part-ids")
+
+            if not part_id:
+                return (400, {}, json.dumps(build_error_response("part/id is required")))
+            if not meta_ids:
+                return (400, {}, json.dumps(build_error_response("part/meta-part-ids is required")))
+
+            # Check if part exists
+            part_found = any(p["part/id"] == part_id for p in self._parts)
+            if not part_found:
+                return (404, {}, json.dumps(build_error_response(f"Part not found: {part_id}")))
+
+            return (200, {}, json.dumps(build_success_response({"status": "ok"})))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_part_substitute_operation(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle part/add-substitute-ids and part/remove-substitute-ids requests."""
+        try:
+            body = json.loads(request.body)
+            part_id = body.get("part/id")
+            substitute_ids = body.get("part/substitute-ids")
+
+            if not part_id:
+                return (400, {}, json.dumps(build_error_response("part/id is required")))
+            if not substitute_ids:
+                return (400, {}, json.dumps(build_error_response("part/substitute-ids is required")))
+
+            # Check if part exists
+            part_found = any(p["part/id"] == part_id for p in self._parts)
+            if not part_found:
+                return (404, {}, json.dumps(build_error_response(f"Part not found: {part_id}")))
+
+            return (200, {}, json.dumps(build_success_response({"status": "ok"})))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_part_storage(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle part/storage requests - returns aggregated stock by location."""
+        try:
+            body = json.loads(request.body)
+            part_id = body.get("part/id")
+
+            if not part_id:
+                return (400, {}, json.dumps(build_error_response("part/id is required")))
+
+            # Find the part
+            part = None
+            for p in self._parts:
+                if p["part/id"] == part_id:
+                    part = p
+                    break
+
+            if not part:
+                return (404, {}, json.dumps(build_error_response(f"Part not found: {part_id}")))
+
+            # Aggregate stock by storage location
+            storage_totals: dict[str, dict[str, Any]] = {}
+            for stock in part.get("part/stock", []):
+                storage_id = stock.get("stock/storage-id")
+                if storage_id:
+                    if storage_id not in storage_totals:
+                        storage_totals[storage_id] = {
+                            "source/part-id": part_id,
+                            "source/storage-id": storage_id,
+                            "source/lot-id": None,  # Aggregated, so no specific lot
+                            "source/quantity": 0,
+                            "source/status": stock.get("stock/status"),
+                            "source/first-timestamp": stock.get("stock/timestamp"),
+                            "source/last-timestamp": stock.get("stock/timestamp"),
+                        }
+                    storage_totals[storage_id]["source/quantity"] += stock.get("stock/quantity", 0)
+                    ts = stock.get("stock/timestamp")
+                    if ts:
+                        if storage_totals[storage_id]["source/first-timestamp"] is None or ts < storage_totals[storage_id]["source/first-timestamp"]:
+                            storage_totals[storage_id]["source/first-timestamp"] = ts
+                        if storage_totals[storage_id]["source/last-timestamp"] is None or ts > storage_totals[storage_id]["source/last-timestamp"]:
+                            storage_totals[storage_id]["source/last-timestamp"] = ts
+
+            return (200, {}, json.dumps(build_success_response(list(storage_totals.values()))))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_part_lots(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle part/lots requests - returns individual lot entries."""
+        try:
+            body = json.loads(request.body)
+            part_id = body.get("part/id")
+
+            if not part_id:
+                return (400, {}, json.dumps(build_error_response("part/id is required")))
+
+            # Return lots for this part
+            lots_for_part = [
+                {
+                    "source/part-id": lot["lot/part-id"],
+                    "source/storage-id": lot.get("lot/storage-id"),
+                    "source/lot-id": lot["lot/id"],
+                    "source/quantity": lot.get("lot/quantity", 0),
+                    "source/status": None,
+                    "source/first-timestamp": lot.get("lot/created"),
+                    "source/last-timestamp": lot.get("lot/created"),
+                }
+                for lot in self._lots
+                if lot.get("lot/part-id") == part_id
+            ]
+
+            return (200, {}, json.dumps(build_success_response(lots_for_part)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_part_stock(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle part/stock requests - returns total stock count."""
+        try:
+            body = json.loads(request.body)
+            part_id = body.get("part/id")
+
+            if not part_id:
+                return (400, {}, json.dumps(build_error_response("part/id is required")))
+
+            # Find the part
+            part = None
+            for p in self._parts:
+                if p["part/id"] == part_id:
+                    part = p
+                    break
+
+            if not part:
+                return (404, {}, json.dumps(build_error_response(f"Part not found: {part_id}")))
+
+            # Calculate total stock
+            total = sum(s.get("stock/quantity", 0) for s in part.get("part/stock", []))
+
+            return (200, {}, json.dumps(build_success_response(total)))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_storage_change_settings(self, request: Any) -> tuple[int, dict[str, str], str]:
+        """Handle storage/change-settings requests."""
+        try:
+            body = json.loads(request.body)
+            storage_id = body.get("storage/id")
+
+            if not storage_id:
+                return (400, {}, json.dumps(build_error_response("storage/id is required")))
+
+            for loc in self._storage:
+                if loc["storage/id"] == storage_id:
+                    # Update settings
+                    if "storage/full?" in body:
+                        loc["storage/full?"] = body["storage/full?"]
+                    if "storage/single-part?" in body:
+                        loc["storage/single-part?"] = body["storage/single-part?"]
+                    if "storage/existing-parts-only?" in body:
+                        loc["storage/existing-parts-only?"] = body["storage/existing-parts-only?"]
+                    return (200, {}, json.dumps(build_success_response(loc)))
+
+            return (404, {}, json.dumps(build_error_response(f"Storage not found: {storage_id}")))
+        except Exception as e:
+            return (500, {}, json.dumps(build_error_response(str(e))))
+
+    def _handle_file_download(self, request: Any) -> tuple[int, dict[str, str], bytes]:
+        """Handle file/download requests - returns binary data."""
+        try:
+            body = json.loads(request.body)
+            file_id = body.get("file/id")
+
+            if not file_id:
+                return (400, {"Content-Type": "application/json"}, json.dumps(build_error_response("file/id is required")).encode())
+
+            # Generate fake file content based on file_id
+            if file_id.startswith("img_"):
+                # Return a minimal valid PNG file (1x1 transparent pixel)
+                png_data = bytes([
+                    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,  # PNG signature
+                    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,  # IHDR chunk
+                    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,  # 1x1
+                    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,  # bit depth, color type
+                    0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,  # IDAT chunk
+                    0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,  # compressed data
+                    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+                    0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,  # IEND chunk
+                    0x42, 0x60, 0x82,
+                ])
+                headers = {
+                    "Content-Type": "image/png",
+                    "Content-Disposition": f'attachment; filename="{file_id}.png"',
+                }
+                return (200, headers, png_data)
+            else:
+                # Return generic binary data
+                data = f"File content for {file_id}".encode()
+                headers = {
+                    "Content-Type": "application/octet-stream",
+                    "Content-Disposition": f'attachment; filename="{file_id}.bin"',
+                }
+                return (200, headers, data)
+        except Exception as e:
+            return (500, {"Content-Type": "application/json"}, json.dumps(build_error_response(str(e))).encode())
 
     def set_parts(self, parts: list[dict[str, Any]]) -> None:
         """Update the parts data (must be called before entering context)."""

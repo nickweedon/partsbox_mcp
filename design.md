@@ -1186,12 +1186,60 @@ Full API documentation: https://partsbox.com/api.html
 
 | Operation | Description |
 |-----------|-------------|
+| **Parts** | |
 | `part/all` | Get all parts |
 | `part/get` | Get single part by ID |
 | `part/create` | Create new part |
 | `part/update` | Update existing part |
-| `stock/get` | Get stock for part |
+| `part/delete` | Delete a part |
+| `part/add-meta-part-ids` | Add members to a meta-part |
+| `part/remove-meta-part-ids` | Remove members from a meta-part |
+| `part/add-substitute-ids` | Add substitutes to a part |
+| `part/remove-substitute-ids` | Remove substitutes from a part |
+| `part/storage` | Get aggregated stock by storage location |
+| `part/lots` | Get individual lot entries |
+| `part/stock` | Get total stock count |
+| **Stock** | |
 | `stock/add` | Add stock entry |
+| `stock/remove` | Remove stock entry |
+| `stock/move` | Move stock between locations |
+| `stock/update` | Update stock entry |
+| **Lots** | |
+| `lot/all` | Get all lots |
+| `lot/get` | Get lot by ID |
+| `lot/update` | Update lot |
+| **Storage** | |
 | `storage/all` | Get all storage locations |
+| `storage/get` | Get storage location by ID |
+| `storage/update` | Update storage location |
+| `storage/rename` | Rename storage location |
+| `storage/change-settings` | Modify storage settings |
+| `storage/archive` | Archive storage location |
+| `storage/restore` | Restore archived location |
+| `storage/parts` | List parts in storage |
+| `storage/lots` | List lots in storage |
+| **Projects** | |
 | `project/all` | Get all projects |
-| `project/bom` | Get BOM for project |
+| `project/get` | Get project by ID |
+| `project/create` | Create new project |
+| `project/update` | Update project |
+| `project/delete` | Delete project |
+| `project/archive` | Archive project |
+| `project/restore` | Restore archived project |
+| `project/get-entries` | Get BOM entries |
+| `project/add-entries` | Add BOM entries |
+| `project/update-entries` | Update BOM entries |
+| `project/delete-entries` | Delete BOM entries |
+| `project/get-builds` | Get build history |
+| `build/get` | Get build by ID |
+| `build/update` | Update build |
+| **Orders** | |
+| `order/all` | Get all orders |
+| `order/get` | Get order by ID |
+| `order/create` | Create new order |
+| `order/get-entries` | Get order entries |
+| `order/add-entries` | Add entries to order |
+| `order/delete-entry` | Delete entry from order |
+| `order/receive` | Receive stock from order |
+| **Files** | |
+| `file/download` | Download a file/attachment |

@@ -180,6 +180,18 @@ class PartsBoxClient:
         response.raise_for_status()
         return response.json()
 
+    def _request_raw(
+        self, operation: str, data: dict[str, Any] | None = None
+    ) -> requests.Response:
+        """Make a request to the PartsBox API and return the raw response.
+
+        Use this for endpoints that return binary data (e.g., file downloads).
+        """
+        url = f"{BASE_URL}/{operation}"
+        response = self._session.post(url, json=data or {})
+        response.raise_for_status()
+        return response
+
     def get_all_parts(self) -> list[dict[str, Any]]:
         """Fetch all parts from PartsBox."""
         result = self._request("part/all")

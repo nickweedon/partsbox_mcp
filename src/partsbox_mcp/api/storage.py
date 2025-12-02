@@ -6,6 +6,7 @@ Provides MCP tools for storage location management:
 - storage/get - Retrieve location details
 - storage/update - Modify location metadata
 - storage/rename - Change location name
+- storage/change-settings - Modify location settings (full, single-part, existing-parts-only)
 - storage/archive - Hide from normal usage
 - storage/restore - Un-archive location
 - storage/parts - List aggregated stock by part
@@ -419,6 +420,50 @@ def restore_storage_location(storage_id: str) -> StorageOperationResponse:
 
     try:
         result = api_client._request("storage/restore", {"storage/id": storage_id})
+        return StorageOperationResponse(success=True, data=result.get("data"))
+    except requests.RequestException as e:
+        return StorageOperationResponse(
+            success=False, error=f"API request failed: {e}"
+        )
+
+
+def change_storage_settings(
+    storage_id: str,
+    full: bool | None = None,
+    single_part: bool | None = None,
+    existing_parts_only: bool | None = None,
+) -> StorageOperationResponse:
+    """
+    Modify storage location settings.
+
+    These settings control what can be stored in this location.
+
+    Args:
+        storage_id: The unique identifier of the storage location
+        full: If True, the location won't accept new stock (marked as full)
+        single_part: If True, the location can only contain a single part type
+        existing_parts_only: If True, only parts already in the location can be added
+
+    Returns:
+        StorageOperationResponse with the operation result.
+
+        Note: The PartsBox API returns status information. Use get_storage_location()
+        to verify the updated settings.
+    """
+    if not storage_id:
+        return StorageOperationResponse(success=False, error="storage_id is required")
+
+    payload: dict[str, Any] = {"storage/id": storage_id}
+
+    if full is not None:
+        payload["storage/full?"] = full
+    if single_part is not None:
+        payload["storage/single-part?"] = single_part
+    if existing_parts_only is not None:
+        payload["storage/existing-parts-only?"] = existing_parts_only
+
+    try:
+        result = api_client._request("storage/change-settings", payload)
         return StorageOperationResponse(success=True, data=result.get("data"))
     except requests.RequestException as e:
         return StorageOperationResponse(

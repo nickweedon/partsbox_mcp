@@ -76,7 +76,83 @@ The PartsBox API is operation-oriented (not REST) and provides:
 
 ## Available Tools
 
-*Tools will be implemented to wrap PartsBox API operations. See the server implementation for the complete list of available tools.*
+### Parts API
+| Tool | Description |
+|------|-------------|
+| `list_parts` | List all parts with pagination and JMESPath queries |
+| `get_part` | Get detailed information for a specific part |
+| `create_part` | Create a new part |
+| `update_part` | Update an existing part |
+| `delete_part` | Delete a part |
+| `add_meta_part_ids` | Add members to a meta-part |
+| `remove_meta_part_ids` | Remove members from a meta-part |
+| `add_substitute_ids` | Add substitutes to a part |
+| `remove_substitute_ids` | Remove substitutes from a part |
+| `get_part_storage` | Get aggregated stock by storage location |
+| `get_part_lots` | Get individual lot entries for a part |
+| `get_part_stock` | Get total stock count for a part |
+
+### Stock API
+| Tool | Description |
+|------|-------------|
+| `add_stock` | Add stock to inventory |
+| `remove_stock` | Remove stock from inventory |
+| `move_stock` | Move stock between locations |
+| `update_stock` | Update a stock entry |
+
+### Lots API
+| Tool | Description |
+|------|-------------|
+| `list_lots` | List all lots |
+| `get_lot` | Get lot details |
+| `update_lot` | Update lot information |
+
+### Storage API
+| Tool | Description |
+|------|-------------|
+| `list_storage_locations` | List all storage locations |
+| `get_storage_location` | Get storage location details |
+| `update_storage_location` | Update storage location metadata |
+| `rename_storage_location` | Rename a storage location |
+| `change_storage_settings` | Modify storage settings (full, single-part, existing-parts-only) |
+| `archive_storage_location` | Archive a storage location |
+| `restore_storage_location` | Restore an archived location |
+| `list_storage_parts` | List aggregated stock by part in a location |
+| `list_storage_lots` | List individual lots in a location |
+
+### Projects API
+| Tool | Description |
+|------|-------------|
+| `list_projects` | List all projects/BOMs |
+| `get_project` | Get project details |
+| `create_project` | Create a new project |
+| `update_project` | Update project metadata |
+| `delete_project` | Delete a project |
+| `archive_project` | Archive a project |
+| `restore_project` | Restore an archived project |
+| `get_project_entries` | Get BOM entries for a project |
+| `add_project_entries` | Add entries to a project BOM |
+| `update_project_entries` | Update BOM entries |
+| `delete_project_entries` | Remove entries from a BOM |
+| `get_project_builds` | Get build history for a project |
+| `get_build` | Get build details |
+| `update_build` | Update build information |
+
+### Orders API
+| Tool | Description |
+|------|-------------|
+| `list_orders` | List all orders |
+| `get_order` | Get order details |
+| `create_order` | Create a new order |
+| `get_order_entries` | Get line items in an order |
+| `add_order_entries` | Add items to an order |
+| `delete_order_entry` | Remove an item from an order |
+| `receive_order` | Process received inventory |
+
+### Files API
+| Tool | Description |
+|------|-------------|
+| `download_file` | Download a file (image, datasheet) associated with a part |
 
 ## JMESPath Query Support
 

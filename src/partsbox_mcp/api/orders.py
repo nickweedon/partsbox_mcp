@@ -7,6 +7,7 @@ Provides MCP tools for order management:
 - order/create - Create new purchase order
 - order/get-entries - List stock items in order
 - order/add-entries - Add items to open orders
+- order/delete-entry - Remove item from open order
 - order/receive - Process received inventory into storage
 """
 
@@ -574,6 +575,43 @@ def receive_order(
 
     try:
         result = api_client._request("order/receive", payload)
+        return OrderOperationResponse(success=True, data=result.get("data"))
+    except requests.RequestException as e:
+        return OrderOperationResponse(
+            success=False, error=f"API request failed: {e}"
+        )
+
+
+def delete_order_entry(
+    order_id: str,
+    stock_id: str,
+) -> OrderOperationResponse:
+    """
+    Delete an entry from an open order.
+
+    This removes a line item from an order that has not yet been received.
+
+    Args:
+        order_id: The order ID
+        stock_id: The stock entry ID to delete (obtained from order/get-entries)
+
+    Returns:
+        OrderOperationResponse with the result.
+
+        Note: The PartsBox API returns status information. Data may be null on success.
+    """
+    if not order_id:
+        return OrderOperationResponse(success=False, error="order_id is required")
+    if not stock_id:
+        return OrderOperationResponse(success=False, error="stock_id is required")
+
+    payload: dict[str, Any] = {
+        "order/id": order_id,
+        "stock/id": stock_id,
+    }
+
+    try:
+        result = api_client._request("order/delete-entry", payload)
         return OrderOperationResponse(success=True, data=result.get("data"))
     except requests.RequestException as e:
         return OrderOperationResponse(
