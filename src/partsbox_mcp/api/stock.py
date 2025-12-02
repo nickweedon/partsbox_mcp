@@ -62,34 +62,7 @@ def add_stock(
     lot_description: str | None = None,
     order_id: str | None = None,
 ) -> StockOperationResponse:
-    """
-    Add inventory for a part.
-
-    Args:
-        part_id: The part ID to add stock for
-        storage_id: The storage location ID
-        quantity: Number of parts to add (must be positive)
-        comments: Optional comments for this stock entry
-        price: Optional unit price
-        currency: Optional currency code (e.g., 'usd', 'eur')
-        lot_name: Optional lot name
-        lot_description: Optional lot description
-        order_id: Optional order ID this stock came from
-
-    Returns:
-        StockOperationResponse with the operation result.
-
-        Data schema (when successful, data may contain lot information):
-        {
-            "type": ["object", "null"],
-            "properties": {
-                "lot/id": {"type": "string", "description": "Created lot identifier (26-char compact UUID)"}
-            }
-        }
-
-        Note: The PartsBox API returns status information. Stock is not returned directly;
-        use list_parts() to see updated stock levels.
-    """
+    """Add inventory for a part."""
     if not part_id:
         return StockOperationResponse(success=False, error="part_id is required")
     if not storage_id:
@@ -130,22 +103,7 @@ def remove_stock(
     comments: str | None = None,
     lot_id: str | None = None,
 ) -> StockOperationResponse:
-    """
-    Remove parts from inventory.
-
-    Args:
-        part_id: The part ID to remove stock from
-        storage_id: The storage location ID
-        quantity: Number of parts to remove (must be positive)
-        comments: Optional comments for this removal
-        lot_id: Optional specific lot ID to remove from
-
-    Returns:
-        StockOperationResponse with the operation result.
-
-        Note: The PartsBox API returns status information. Stock is not returned directly;
-        use list_parts() to see updated stock levels.
-    """
+    """Remove parts from inventory."""
     if not part_id:
         return StockOperationResponse(success=False, error="part_id is required")
     if not storage_id:
@@ -179,31 +137,7 @@ def move_stock(
     comments: str | None = None,
     lot_id: str | None = None,
 ) -> StockOperationResponse:
-    """
-    Transfer stock to a different location.
-
-    Args:
-        part_id: The part ID to move
-        source_storage_id: The source storage location ID
-        target_storage_id: The target storage location ID
-        quantity: Number of parts to move (must be positive)
-        comments: Optional comments for this move
-        lot_id: Optional specific lot ID to move from
-
-    Returns:
-        StockOperationResponse with the operation result.
-
-        Data schema (when successful, may contain lot information):
-        {
-            "type": ["object", "null"],
-            "properties": {
-                "lot/id": {"type": "string", "description": "Created lot identifier at target location (26-char compact UUID)"}
-            }
-        }
-
-        Note: The PartsBox API returns status information. Stock is not returned directly;
-        use list_parts() to see updated stock levels.
-    """
+    """Transfer stock to a different location."""
     if not part_id:
         return StockOperationResponse(success=False, error="part_id is required")
     if not source_storage_id:
@@ -244,23 +178,7 @@ def update_stock(
     price: float | None = None,
     currency: str | None = None,
 ) -> StockOperationResponse:
-    """
-    Modify an existing stock entry.
-
-    Args:
-        part_id: The part ID
-        timestamp: The timestamp of the stock entry to update
-        quantity: Optional new quantity
-        comments: Optional new comments
-        price: Optional new unit price
-        currency: Optional new currency code
-
-    Returns:
-        StockOperationResponse with the operation result.
-
-        Note: The PartsBox API returns status information. Stock is not returned directly;
-        use list_parts() to see updated stock levels.
-    """
+    """Modify an existing stock entry."""
     if not part_id:
         return StockOperationResponse(success=False, error="part_id is required")
     if not timestamp:
