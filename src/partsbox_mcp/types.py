@@ -35,6 +35,7 @@ class StockEntryData(TypedDict, total=False):
         stock/custom-price?: Whether price was manually set
         stock/arriving: Expected delivery timestamp (UNIX UTC milliseconds)
         stock/user: User who created the entry
+        stock/linked?: Whether this entry is linked to another (e.g., paired move entries)
     """
 
     # Required fields
@@ -55,6 +56,7 @@ class StockEntryData(TypedDict, total=False):
     stock_custom_price: bool  # stock/custom-price?
     stock_arriving: int  # stock/arriving
     stock_user: str  # stock/user
+    stock_linked: bool  # stock/linked?
 
 
 class SourceData(TypedDict, total=False):

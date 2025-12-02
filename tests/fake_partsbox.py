@@ -59,7 +59,23 @@ SAMPLE_PARTS: list[PartData] = [
                 "stock/currency": "usd",
                 "stock/price": 0.01,
                 "stock/comments": "Initial stock",
-            }
+            },
+            {
+                "stock/quantity": -100,
+                "stock/storage-id": "loc_001",
+                "stock/timestamp": 1700000500000,
+                "stock/user": "testuser",
+                "stock/comments": "Moved from loc_001 to loc_002",
+                "stock/linked?": True,
+            },
+            {
+                "stock/quantity": 100,
+                "stock/storage-id": "loc_002",
+                "stock/timestamp": 1700000500001,
+                "stock/user": "testuser",
+                "stock/comments": "Moved from loc_001 to loc_002",
+                "stock/linked?": True,
+            },
         ],
     },
     {

@@ -141,7 +141,8 @@ def list_parts(
                             "stock/user": {"type": ["string", "null"], "description": "User who created the entry"},
                             "stock/status": {"type": ["string", "null"], "description": "Stock status (ordered, reserved, etc.) or null for on-hand"},
                             "stock/order-id": {"type": ["string", "null"], "description": "Parent order identifier"},
-                            "stock/vendor-sku": {"type": ["string", "null"], "description": "Vendor SKU"}
+                            "stock/vendor-sku": {"type": ["string", "null"], "description": "Vendor SKU"},
+                            "stock/linked?": {"type": ["boolean", "null"], "description": "Whether this entry is linked to another (e.g., paired move entries)"}
                         }
                     }
                 }
@@ -309,7 +310,8 @@ def get_part(part_id: str) -> PartResponse:
                             "stock/user": {"type": ["string", "null"], "description": "User who created the entry"},
                             "stock/status": {"type": ["string", "null"], "description": "Stock status (ordered, reserved, etc.) or null for on-hand"},
                             "stock/order-id": {"type": ["string", "null"], "description": "Parent order identifier"},
-                            "stock/vendor-sku": {"type": ["string", "null"], "description": "Vendor SKU"}
+                            "stock/vendor-sku": {"type": ["string", "null"], "description": "Vendor SKU"},
+                            "stock/linked?": {"type": ["boolean", "null"], "description": "Whether this entry is linked to another (e.g., paired move entries)"}
                         }
                     }
                 }

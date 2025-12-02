@@ -540,3 +540,14 @@ class TestNewlyAddedFields:
             assert "part/img-id" in part
             # img-id can be string or null
             assert part["part/img-id"] is None or isinstance(part["part/img-id"], str)
+
+    def test_stock_entries_linked_field(self) -> None:
+        """Verify stock entries have stock/linked? field for move operations."""
+        # Find stock entries with linked? field
+        linked_entries_found = False
+        for part in SAMPLE_PARTS:
+            for stock in part["part/stock"]:
+                if "stock/linked?" in stock:
+                    linked_entries_found = True
+                    assert isinstance(stock["stock/linked?"], bool)
+        assert linked_entries_found, "Sample data should contain at least one linked stock entry"

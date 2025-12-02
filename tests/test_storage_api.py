@@ -240,8 +240,9 @@ class TestListStorageParts:
         result = list_storage_parts("loc_001")
 
         assert result.success is True
-        assert result.total == 2  # 10K resistor and 1K resistor
-        assert len(result.data) == 2
+        # 10K resistor (2 entries: initial + move out), 1K resistor
+        assert result.total == 3
+        assert len(result.data) == 3
 
     def test_list_storage_parts_missing_id(self, fake_api_active):
         """list_storage_parts returns error for missing storage_id."""
