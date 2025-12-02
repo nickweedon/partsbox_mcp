@@ -105,6 +105,7 @@ def list_parts(
                 "part/manufacturer": {"type": ["string", "null"], "description": "Manufacturer name"},
                 "part/mpn": {"type": ["string", "null"], "description": "Manufacturer part number"},
                 "part/linked-id": {"type": ["string", "null"], "description": "Linked part identifier (for linked parts)"},
+                "part/img-id": {"type": ["string", "null"], "description": "Image identifier for the part's associated image"},
                 "part/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
                 "part/cad-keys": {"type": "array", "items": {"type": "string"}, "description": "CAD keys for matching"},
                 "part/attrition": {
@@ -272,6 +273,7 @@ def get_part(part_id: str) -> PartResponse:
                 "part/manufacturer": {"type": ["string", "null"], "description": "Manufacturer name"},
                 "part/mpn": {"type": ["string", "null"], "description": "Manufacturer part number"},
                 "part/linked-id": {"type": ["string", "null"], "description": "Linked part identifier (for linked parts)"},
+                "part/img-id": {"type": ["string", "null"], "description": "Image identifier for the part's associated image"},
                 "part/tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"},
                 "part/cad-keys": {"type": "array", "items": {"type": "string"}, "description": "CAD keys for matching"},
                 "part/attrition": {

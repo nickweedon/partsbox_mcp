@@ -48,6 +48,7 @@ SAMPLE_PARTS: list[PartData] = [
         "part/cad-keys": ["R_0805_10K"],
         "part/attrition": {"percentage": 5.0, "quantity": 0},
         "part/low-stock": {"report": 100},
+        "part/img-id": "img_resistor_10k",
         "part/custom-fields": None,
         "part/stock": [
             {
@@ -74,6 +75,7 @@ SAMPLE_PARTS: list[PartData] = [
         "part/owner": "owner_001",
         "part/tags": ["capacitor", "mlcc", "0603"],
         "part/cad-keys": [],
+        "part/img-id": None,
         "part/custom-fields": {"voltage_rating": "16V"},
         "part/stock": [
             {
@@ -100,6 +102,7 @@ SAMPLE_PARTS: list[PartData] = [
         "part/linked-id": "linked_esp32",
         "part/tags": ["mcu", "wifi", "bluetooth", "module"],
         "part/cad-keys": ["ESP32-WROOM-32"],
+        "part/img-id": "img_esp32_module",
         "part/custom-fields": {"flash_size": "4MB"},
         "part/stock": [
             {
@@ -125,6 +128,7 @@ SAMPLE_PARTS: list[PartData] = [
         "part/owner": "owner_001",
         "part/tags": ["resistor", "smd", "0805"],
         "part/cad-keys": ["R_0805_1K"],
+        "part/img-id": None,
         "part/custom-fields": None,
         "part/stock": [
             {
@@ -150,6 +154,7 @@ SAMPLE_PARTS: list[PartData] = [
         "part/owner": "owner_001",
         "part/tags": ["led", "smd", "0805", "red"],
         "part/cad-keys": [],
+        "part/img-id": "img_led_red",
         "part/custom-fields": None,
         "part/stock": [],
     },

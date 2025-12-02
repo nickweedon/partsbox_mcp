@@ -119,6 +119,7 @@ class PartData(TypedDict, total=False):
         part/mpn: Manufacturer part number
         part/tags: List of tags
         part/linked-id: Linked part identifier (for linked parts)
+        part/img-id: Image identifier for the part's associated image
         part/attrition: Attrition settings for manufacturing
         part/low-stock: Low stock threshold settings
         part/cad-keys: CAD keys for matching
@@ -141,6 +142,7 @@ class PartData(TypedDict, total=False):
     part_mpn: str | None  # part/mpn
     part_tags: list[str]  # part/tags
     part_linked_id: str  # part/linked-id
+    part_img_id: str | None  # part/img-id
     part_attrition: PartAttritionData  # part/attrition
     part_low_stock: PartLowStockData  # part/low-stock
     part_cad_keys: list[str]  # part/cad-keys

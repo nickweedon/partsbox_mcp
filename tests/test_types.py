@@ -533,3 +533,10 @@ class TestNewlyAddedFields:
         """Verify lots have order-id field."""
         for lot in SAMPLE_LOTS:
             assert "lot/order-id" in lot
+
+    def test_parts_have_img_id(self) -> None:
+        """Verify parts have img-id field."""
+        for part in SAMPLE_PARTS:
+            assert "part/img-id" in part
+            # img-id can be string or null
+            assert part["part/img-id"] is None or isinstance(part["part/img-id"], str)

@@ -360,6 +360,7 @@ class TestGetPart:
         assert "part/mpn" in part
         assert "part/created" in part
         assert "part/tags" in part
+        assert "part/img-id" in part
         assert "part/stock" in part
 
         # Check stock data
@@ -367,6 +368,18 @@ class TestGetPart:
         stock = part["part/stock"][0]
         assert "stock/quantity" in stock
         assert "stock/storage-id" in stock
+
+    def test_get_part_returns_img_id(self, fake_api_active):
+        """get_part returns img-id field which can be string or null."""
+        result = get_part("part_001")
+
+        assert result.success is True
+        assert result.data["part/img-id"] == "img_resistor_10k"
+
+        # Test with a part that has null img-id
+        result2 = get_part("part_002")
+        assert result2.success is True
+        assert result2.data["part/img-id"] is None
 
 
 class TestEmptyAPI:
