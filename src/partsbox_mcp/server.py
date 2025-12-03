@@ -14,6 +14,11 @@ Methods WITHOUT JMESPath queries do NOT require schema documentation.
 Why? The LLM needs to understand the structure of data it can filter/project
 with JMESPath queries, but for simple operations that return fixed structures,
 the response type is sufficient.
+
+Note: While MCP recently added support for output schemas derived from return
+type annotations, most MCP clients (including Claude Desktop) have not yet
+implemented this feature. Therefore, explicit schema documentation in docstrings
+remains the only reliable way for LLMs to understand output structure.
 ================================================================================
 """
 
