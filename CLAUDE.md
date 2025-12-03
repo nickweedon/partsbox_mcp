@@ -8,7 +8,8 @@ This MCP Server will be used by Claude Desktop as part of a custom Claude Deskto
 
 ## Debugging
 
-The user's logs relating to usage of this MCP server can be found at "TODO"
+The user's logs relating to usage of this MCP server can be found at /workspace/claude-desktop-logs. More specifically the logs mcp-server-parsbox*.log; you should ONLY look at these files in this directory as the other files will not contain any useful information.
+You should consult these logs whenever a prompt refers to recent errors in Claude Desktop.
 
 ## Project Structure
 

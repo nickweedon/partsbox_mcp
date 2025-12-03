@@ -39,8 +39,11 @@ def download_file(file_id: str) -> FileDownloadResponse:
         return FileDownloadResponse(success=False, error="file_id is required")
 
     try:
-        # The file/download endpoint returns binary data, not JSON
-        response = api_client._request_raw("file/download", {"file/id": file_id})
+        # Files are accessed via GET request to partsbox.com/files/{file_id}
+        # This is a web endpoint, not the API endpoint
+        url = f"https://partsbox.com/files/{file_id}"
+        response = api_client._session.get(url)
+        response.raise_for_status()
 
         content_type = response.headers.get("Content-Type")
         content_disposition = response.headers.get("Content-Disposition", "")
@@ -52,6 +55,12 @@ def download_file(file_id: str) -> FileDownloadResponse:
             parts = content_disposition.split("filename=")
             if len(parts) > 1:
                 filename = parts[1].strip('"\'')
+
+        # If no filename in header, generate one from file_id and content_type
+        if not filename and content_type:
+            ext = content_type.split("/")[-1].split(";")[0]
+            if ext in ["jpeg", "jpg", "png", "gif", "pdf", "webp"]:
+                filename = f"{file_id}.{ext}"
 
         return FileDownloadResponse(
             success=True,

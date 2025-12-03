@@ -8,6 +8,7 @@ This module provides:
 """
 
 import json
+import re
 import time
 from typing import Any
 
@@ -913,12 +914,12 @@ class FakePartsBoxAPI:
             content_type="application/json",
         )
 
-        # File endpoints
+        # File endpoints - web-based, not API-based
+        # Pattern: GET https://partsbox.com/files/{file_id}
         self._mock.add_callback(
-            responses.POST,
-            f"{self.BASE_URL}/file/download",
+            responses.GET,
+            re.compile(r"https://partsbox\.com/files/([a-z0-9_]+)"),
             callback=self._handle_file_download,
-            content_type="application/octet-stream",
         )
 
     def _handle_part_get(self, request: Any) -> tuple[int, dict[str, str], str]:
@@ -1562,13 +1563,14 @@ class FakePartsBoxAPI:
             return (500, {}, json.dumps(build_error_response(str(e))))
 
     def _handle_file_download(self, request: Any) -> tuple[int, dict[str, str], bytes]:
-        """Handle file/download requests - returns binary data."""
+        """Handle file download requests via GET - returns binary data."""
         try:
-            body = json.loads(request.body)
-            file_id = body.get("file/id")
+            # Extract file_id from URL path: https://partsbox.com/files/{file_id}
+            match = re.search(r'/files/([a-z0-9_]+)', request.url)
+            if not match:
+                return (400, {"Content-Type": "application/json"}, json.dumps(build_error_response("Invalid file URL")).encode())
 
-            if not file_id:
-                return (400, {"Content-Type": "application/json"}, json.dumps(build_error_response("file/id is required")).encode())
+            file_id = match.group(1)
 
             # Generate fake file content based on file_id
             if file_id.startswith("img_"):
