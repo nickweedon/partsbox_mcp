@@ -13,6 +13,13 @@ import requests
 
 from partsbox_mcp.client import api_client
 
+# Import FastMCP Image type for proper MCP image content responses
+try:
+    from fastmcp.utilities.types import Image as FastMCPImage
+except ImportError:
+    # Fallback for older FastMCP versions
+    from fastmcp import Image as FastMCPImage  # type: ignore
+
 
 # =============================================================================
 # Response Types
@@ -96,43 +103,27 @@ def download_file(file_id: str) -> FileDownloadResponse:
         return FileDownloadResponse(success=False, error=f"API request failed: {e}")
 
 
-def download_image(file_id: str) -> ImageDownloadResponse:
+def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
     """
-    Download an image from PartsBox as base64-encoded data.
+    Download an image from PartsBox for rendering in Claude Desktop.
 
-    This method is specifically designed for images that need to be rendered
-    by Claude Desktop. Unlike download_file(), this returns base64-encoded
-    data instead of raw bytes, which Claude Desktop can decode, save to a file,
-    and then render directly using its view tool.
+    This method returns a FastMCP Image object that Claude Desktop can render
+    directly. The image is fetched from PartsBox and returned in the proper
+    MCP format for immediate display.
 
     Args:
         file_id: The file identifier (obtained from part data, e.g., part/img-id)
 
     Returns:
-        ImageDownloadResponse containing:
-        - success: Whether the download succeeded
-        - data_base64: Base64-encoded image data (if successful)
-        - content_type: MIME type of the image (e.g., "image/png", "image/jpeg")
-        - filename: Suggested filename from server (if provided)
-        - error: Error message (if failed)
-
-    Workflow for Claude Desktop:
-        1. Call download_image() to get base64-encoded image data
-        2. Decode the base64 string and save to a file (e.g., /home/claude/image.png)
-        3. Use the view tool to render the saved image
+        FastMCPImage for successful image downloads (renders in Claude Desktop)
+        ImageDownloadResponse for errors
 
     Example:
-        # Get a part and download its image
+        # Get a part and display its image
         part = get_part("part_abc123")
         if part.data and part.data.get("part/img-id"):
-            result = download_image(part.data["part/img-id"])
-            if result.success:
-                # Claude Desktop can decode and save this
-                import base64
-                image_bytes = base64.b64decode(result.data_base64)
-                with open("/home/claude/part_image.png", "wb") as f:
-                    f.write(image_bytes)
-                # Then use view tool to render it
+            # This will render the image directly in Claude Desktop
+            image = download_image(part.data["part/img-id"])
 
     See Also:
         download_file: For downloading non-image files or when raw bytes are needed
@@ -173,14 +164,17 @@ def download_image(file_id: str) -> ImageDownloadResponse:
                 ext = "svg" if ext == "svg+xml" else ext
                 filename = f"{file_id}.{ext}"
 
-        # Encode the binary data as base64
-        data_base64 = base64.b64encode(response.content).decode("utf-8")
+        # Determine format from content_type
+        # FastMCP Image expects format like "png", "jpeg", etc.
+        image_format = content_type.split("/")[-1].split(";")[0]
+        if image_format == "svg+xml":
+            image_format = "svg"
 
-        return ImageDownloadResponse(
-            success=True,
-            data_base64=data_base64,
-            content_type=content_type,
-            filename=filename,
+        # Return FastMCP Image object which will be rendered properly by Claude Desktop
+        # The Image class handles the MCP protocol format automatically
+        return FastMCPImage(
+            data=response.content,
+            format=image_format,
         )
     except requests.RequestException as e:
         return ImageDownloadResponse(success=False, error=f"API request failed: {e}")
