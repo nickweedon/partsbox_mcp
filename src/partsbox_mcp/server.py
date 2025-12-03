@@ -3,6 +3,18 @@ PartsBox MCP Server - Main Entry Point
 
 This module sets up the FastMCP server and registers all tools
 from the API modules.
+
+IMPORTANT DOCUMENTATION RULE:
+================================================================================
+ONLY tool methods that accept a 'query' parameter (JMESPath filtering) need to
+document their output JSON schema in the docstring Returns section.
+
+Methods WITHOUT JMESPath queries do NOT require schema documentation.
+
+Why? The LLM needs to understand the structure of data it can filter/project
+with JMESPath queries, but for simple operations that return fixed structures,
+the response type is sufficient.
+================================================================================
 """
 
 from typing import Any
