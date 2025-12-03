@@ -12,6 +12,7 @@ services:
     container_name: partsbox-mcp-devcontainer
     environment:
       - PARTSBOX_API_KEY=${PARTSBOX_API_KEY}
+      - USER=${USER}
     env_file:
       - .env
     # Run as vscode user for devcontainer
