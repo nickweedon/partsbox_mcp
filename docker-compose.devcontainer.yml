@@ -12,7 +12,7 @@ services:
     container_name: partsbox-mcp-devcontainer
     environment:
       - PARTSBOX_API_KEY=${PARTSBOX_API_KEY}
-      - USER=${USER}
+      - HOST_USER=${USER}
     env_file:
       - .env
     # Run as vscode user for devcontainer
@@ -21,3 +21,4 @@ services:
     volumes:
       - .:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/c/Users/${USER}/AppData/Roaming/Claude/logs:/workspace/claude-desktop-logs:ro

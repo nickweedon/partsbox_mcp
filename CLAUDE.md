@@ -2,6 +2,14 @@
 
 This is an MCP (Model Context Protocol) server for interfacing with the PartsBox API. It enables AI assistants to manage electronic component inventory through PartsBox.
 
+## Primary Use Case
+
+This MCP Server will be used by Claude Desktop as part of a custom Claude Desktop "Project" that contains instructions to help guide its usage of this MCP server as well as other behavior.
+
+## Debugging
+
+The user's logs relating to usage of this MCP server can be found at "TODO"
+
 ## Project Structure
 
 Follow standard Python project conventions with a modular architecture. API methods should be organized into separate modules by domain.
