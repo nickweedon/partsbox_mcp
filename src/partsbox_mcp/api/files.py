@@ -31,7 +31,7 @@ class FileDownloadResponse:
     """Response for file download operations."""
 
     success: bool
-    data: bytes | None = None
+    data_base64: str | None = None
     content_type: str | None = None
     filename: str | None = None
     error: str | None = None
@@ -57,14 +57,21 @@ def download_file(file_id: str) -> FileDownloadResponse:
     """
     Download a file from PartsBox.
 
-    This method returns raw binary data suitable for saving to disk or processing
-    in binary form (e.g., PDFs, datasheets).
+    This method returns base64-encoded binary data suitable for saving to disk or
+    processing (e.g., PDFs, datasheets). The data is base64-encoded to ensure
+    JSON serialization compatibility.
 
     For images that need to be rendered by Claude Desktop, use download_image()
-    instead, which returns base64-encoded data that can be easily saved and viewed.
+    instead, which returns a FastMCP Image object for direct rendering.
+
+    Args:
+        file_id: The file identifier (obtained from part data)
+
+    Returns:
+        FileDownloadResponse with base64-encoded file data
 
     See Also:
-        download_image: For downloading images as base64-encoded data for rendering
+        download_image: For downloading images as FastMCP Image objects for rendering
     """
     if not file_id:
         return FileDownloadResponse(success=False, error="file_id is required")
@@ -93,9 +100,12 @@ def download_file(file_id: str) -> FileDownloadResponse:
             if ext in ["jpeg", "jpg", "png", "gif", "pdf", "webp"]:
                 filename = f"{file_id}.{ext}"
 
+        # Base64 encode the binary data for JSON serialization
+        data_base64 = base64.b64encode(response.content).decode("utf-8")
+
         return FileDownloadResponse(
             success=True,
-            data=response.content,
+            data_base64=data_base64,
             content_type=content_type,
             filename=filename,
         )
@@ -110,6 +120,10 @@ def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
     This method returns a FastMCP Image object that Claude Desktop can render
     directly. The image is fetched from PartsBox and returned in the proper
     MCP format for immediate display.
+
+    Note: If you need the raw image data as base64 (e.g., to save to disk,
+    embed in HTML, or process further), use download_file() instead. This
+    method is specifically optimized for direct rendering in Claude Desktop.
 
     Args:
         file_id: The file identifier (obtained from part data, e.g., part/img-id)
@@ -126,7 +140,8 @@ def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
             image = download_image(part.data["part/img-id"])
 
     See Also:
-        download_file: For downloading non-image files or when raw bytes are needed
+        download_file: For downloading files as base64-encoded data, including
+                      images when raw data access is needed
     """
     if not file_id:
         return ImageDownloadResponse(success=False, error="file_id is required")
