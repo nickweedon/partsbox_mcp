@@ -10,7 +10,7 @@ from typing import Any
 from fastmcp import FastMCP
 
 from partsbox_mcp.api import files, lots, orders, parts, projects, stock, storage
-from partsbox_mcp.api.files import FileDownloadResponse
+from partsbox_mcp.api.files import FileDownloadResponse, ImageDownloadResponse
 from partsbox_mcp.client import CacheInfo, cache
 
 # =============================================================================
@@ -128,6 +128,9 @@ def list_parts(
                 }
             }
         }
+
+    See Also:
+        download_image: Download part images (part/img-id) as base64 for rendering in Claude Desktop
     """
     return parts.list_parts(
         limit=limit,
@@ -207,6 +210,9 @@ def get_part(part_id: str) -> parts.PartResponse:
                 }
             }
         }
+
+    See Also:
+        download_image: Download part images (part/img-id) as base64 for rendering in Claude Desktop
     """
     return parts.get_part(part_id)
 
@@ -2110,6 +2116,12 @@ def download_file(file_id: str) -> FileDownloadResponse:
     Files in PartsBox are typically images or datasheets associated with parts.
     The file_id can be obtained from part data (e.g., part/img-id field).
 
+    This method returns raw binary data suitable for saving to disk or processing
+    in binary form (e.g., PDFs, datasheets).
+
+    For images that need to be rendered by Claude Desktop, use download_image()
+    instead, which returns base64-encoded data that can be easily saved and viewed.
+
     Args:
         file_id: The file identifier (obtained from part data, e.g., part/img-id)
 
@@ -2129,8 +2141,56 @@ def download_file(file_id: str) -> FileDownloadResponse:
             if file_result.success:
                 with open("part_image.png", "wb") as f:
                     f.write(file_result.data)
+
+    See Also:
+        download_image: For downloading images as base64-encoded data for rendering
     """
     return files.download_file(file_id)
+
+
+@mcp.tool()
+def download_image(file_id: str) -> ImageDownloadResponse:
+    """
+    Download an image from PartsBox as base64-encoded data.
+
+    This method is specifically designed for images that need to be rendered
+    by Claude Desktop. Unlike download_file(), this returns base64-encoded
+    data instead of raw bytes, which Claude Desktop can decode, save to a file,
+    and then render directly using its view tool.
+
+    Args:
+        file_id: The file identifier (obtained from part data, e.g., part/img-id)
+
+    Returns:
+        ImageDownloadResponse containing:
+        - success: Whether the download succeeded
+        - data_base64: Base64-encoded image data (if successful)
+        - content_type: MIME type of the image (e.g., "image/png", "image/jpeg")
+        - filename: Suggested filename from server (if provided)
+        - error: Error message (if failed)
+
+    Workflow for Claude Desktop:
+        1. Call download_image() to get base64-encoded image data
+        2. Decode the base64 string and save to a file (e.g., /home/claude/image.png)
+        3. Use the view tool to render the saved image
+
+    Example:
+        # Get a part and download its image for rendering
+        part = get_part("part_abc123")
+        if part.data and part.data.get("part/img-id"):
+            result = download_image(part.data["part/img-id"])
+            if result.success:
+                # Claude Desktop can decode and save this
+                import base64
+                image_bytes = base64.b64decode(result.data_base64)
+                with open("/home/claude/part_image.png", "wb") as f:
+                    f.write(image_bytes)
+                # Then use view tool to render it
+
+    See Also:
+        download_file: For downloading non-image files or when raw bytes are needed
+    """
+    return files.download_image(file_id)
 
 
 # =============================================================================
