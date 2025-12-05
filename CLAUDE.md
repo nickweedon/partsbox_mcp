@@ -128,6 +128,16 @@ When adding new JMESPath examples in docstrings, always use the null-safe patter
 
 ## Implementation Guidelines
 
+### FastMCP Documentation
+
+For detailed FastMCP implementation guidance, see:
+- [docs/FASTMCP_REFERENCE.md](docs/FASTMCP_REFERENCE.md) - Server implementation (tools, resources, prompts, context, middleware, authentication, deployment)
+- [docs/FASTMCP_SDK_REFERENCE.md](docs/FASTMCP_SDK_REFERENCE.md) - Python SDK reference (exceptions, settings, CLI, client, server modules, utilities)
+
+For additional information beyond what's covered in this project's documentation, refer to:
+- Official FastMCP documentation: https://gofastmcp.com
+- FastMCP GitHub repository: https://github.com/jlowin/fastmcp
+
 ### MCP Tool Method Signatures
 
 The following guidelines should be followed when modifying or creating new MCP tool methods/functions:
