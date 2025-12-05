@@ -10,15 +10,9 @@ import base64
 from dataclasses import dataclass
 
 import requests
+from mcp.types import ImageContent
 
 from partsbox_mcp.client import api_client
-
-# Import FastMCP Image type for proper MCP image content responses
-try:
-    from fastmcp.utilities.types import Image as FastMCPImage
-except ImportError:
-    # Fallback for older FastMCP versions
-    from fastmcp import Image as FastMCPImage  # type: ignore
 
 
 # =============================================================================
@@ -71,7 +65,7 @@ def download_file(file_id: str) -> FileDownloadResponse:
     JSON serialization compatibility.
 
     For images that need to be rendered by Claude Desktop, use download_image()
-    instead, which returns a FastMCP Image object for direct rendering.
+    instead, which returns an MCP ImageContent object for direct rendering.
 
     Args:
         file_id: The file identifier (obtained from part data)
@@ -80,7 +74,7 @@ def download_file(file_id: str) -> FileDownloadResponse:
         FileDownloadResponse with base64-encoded file data
 
     See Also:
-        download_image: For downloading images as FastMCP Image objects for rendering
+        download_image: For downloading images as MCP ImageContent objects for rendering
     """
     if not file_id:
         return FileDownloadResponse(success=False, error="file_id is required")
@@ -122,11 +116,11 @@ def download_file(file_id: str) -> FileDownloadResponse:
         return FileDownloadResponse(success=False, error=f"API request failed: {e}")
 
 
-def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
+def download_image(file_id: str) -> ImageContent | ImageDownloadResponse:
     """
     Download an image from PartsBox for rendering in Claude Desktop.
 
-    This method returns a FastMCP Image object that Claude Desktop can render
+    This method returns an MCP ImageContent object that Claude Desktop can render
     directly. The image is fetched from PartsBox and returned in the proper
     MCP format for immediate display.
 
@@ -138,7 +132,7 @@ def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
         file_id: The file identifier (obtained from part data, e.g., part/img-id)
 
     Returns:
-        FastMCPImage for successful image downloads (renders in Claude Desktop)
+        ImageContent for successful image downloads (renders in Claude Desktop)
         ImageDownloadResponse for errors
 
     Example:
@@ -163,7 +157,6 @@ def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
         response.raise_for_status()
 
         content_type = response.headers.get("Content-Type")
-        content_disposition = response.headers.get("Content-Disposition", "")
 
         # Validate that this is an image
         if not content_type or not content_type.startswith("image/"):
@@ -172,33 +165,14 @@ def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
                 error=f"File is not an image (content-type: {content_type}). Use download_file() instead.",
             )
 
-        # Extract filename from Content-Disposition header if present
-        filename = None
-        if "filename=" in content_disposition:
-            # Parse filename from header like: attachment; filename="image.png"
-            parts = content_disposition.split("filename=")
-            if len(parts) > 1:
-                filename = parts[1].strip('"\'')
+        # Base64 encode the image data
+        data_base64 = base64.b64encode(response.content).decode("utf-8")
 
-        # If no filename in header, generate one from file_id and content_type
-        if not filename:
-            ext = content_type.split("/")[-1].split(";")[0]
-            if ext in ["jpeg", "jpg", "png", "gif", "webp", "svg+xml"]:
-                # Handle svg+xml case
-                ext = "svg" if ext == "svg+xml" else ext
-                filename = f"{file_id}.{ext}"
-
-        # Determine format from content_type
-        # FastMCP Image expects format like "png", "jpeg", etc.
-        image_format = content_type.split("/")[-1].split(";")[0]
-        if image_format == "svg+xml":
-            image_format = "svg"
-
-        # Return FastMCP Image object which will be rendered properly by Claude Desktop
-        # The Image class handles the MCP protocol format automatically
-        return FastMCPImage(
-            data=response.content,
-            format=image_format,
+        # Return MCP ImageContent object which will be rendered properly by Claude Desktop
+        return ImageContent(
+            type="image",
+            data=data_base64,
+            mimeType=content_type,
         )
     except requests.RequestException as e:
         return ImageDownloadResponse(success=False, error=f"API request failed: {e}")

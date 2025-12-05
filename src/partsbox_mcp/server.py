@@ -29,12 +29,7 @@ from fastmcp import FastMCP
 from partsbox_mcp.api import files, lots, orders, parts, projects, stock, storage
 from partsbox_mcp.api.files import FileDownloadResponse, FileUrlResponse, ImageDownloadResponse
 
-# Import FastMCP Image type for proper image responses
-try:
-    from fastmcp.utilities.types import Image as FastMCPImage
-except ImportError:
-    # Fallback for older FastMCP versions
-    from fastmcp import Image as FastMCPImage  # type: ignore
+from mcp.types import ImageContent
 
 from partsbox_mcp.client import CacheInfo, cache
 
@@ -2145,7 +2140,7 @@ def download_file(file_id: str) -> FileDownloadResponse:
     in binary form (e.g., PDFs, datasheets).
 
     For images that need to be rendered by Claude Desktop, use download_image()
-    instead, which returns base64-encoded data that can be easily saved and viewed.
+    instead, which returns an MCP ImageContent object for direct rendering.
 
     Args:
         file_id: The file identifier (obtained from part data, e.g., part/img-id)
@@ -2168,17 +2163,17 @@ def download_file(file_id: str) -> FileDownloadResponse:
                     f.write(file_result.data)
 
     See Also:
-        download_image: For downloading images as base64-encoded data for rendering
+        download_image: For downloading images as MCP ImageContent for rendering
     """
     return files.download_file(file_id)
 
 
 @mcp.tool()
-def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
+def download_image(file_id: str) -> ImageContent | ImageDownloadResponse:
     """
     Download an image from PartsBox for rendering in Claude Desktop.
 
-    This method returns a FastMCP Image object that Claude Desktop can render
+    This method returns an MCP ImageContent object that Claude Desktop can render
     directly. The image is fetched from PartsBox and displayed immediately
     without needing manual decoding or file operations.
 
@@ -2186,7 +2181,7 @@ def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
         file_id: The file identifier (obtained from part data, e.g., part/img-id)
 
     Returns:
-        FastMCPImage for successful downloads (renders directly in Claude Desktop)
+        ImageContent for successful downloads (renders directly in Claude Desktop)
         ImageDownloadResponse for errors
 
     Example:
