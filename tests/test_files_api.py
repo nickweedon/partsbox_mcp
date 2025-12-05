@@ -3,13 +3,14 @@ Unit tests for the Files API module.
 
 Tests cover:
 - download_file: Downloading files/attachments
+- get_download_file_url: Getting file download URLs
 """
 
 import base64
 
 import pytest
 
-from partsbox_mcp.api.files import download_file
+from partsbox_mcp.api.files import download_file, get_download_file_url
 
 
 class TestDownloadFile:
@@ -72,3 +73,31 @@ class TestDownloadFile:
         # Should be valid bytes
         assert isinstance(decoded_data, bytes)
         assert len(decoded_data) > 0
+
+
+class TestGetDownloadFileUrl:
+    """Tests for the get_download_file_url function."""
+
+    def test_get_download_file_url_success(self):
+        """get_download_file_url returns the correct URL."""
+        result = get_download_file_url(file_id="img_resistor_10k")
+
+        assert result.success is True
+        assert result.url == "https://partsbox.com/files/img_resistor_10k"
+        assert result.error is None
+
+    def test_get_download_file_url_empty_id(self):
+        """get_download_file_url fails with empty file_id."""
+        result = get_download_file_url(file_id="")
+
+        assert result.success is False
+        assert "file_id is required" in result.error
+        assert result.url is None
+
+    def test_get_download_file_url_with_special_chars(self):
+        """get_download_file_url handles file IDs with various characters."""
+        result = get_download_file_url(file_id="file_abc123_xyz")
+
+        assert result.success is True
+        assert result.url == "https://partsbox.com/files/file_abc123_xyz"
+        assert result.error is None

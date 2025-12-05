@@ -48,6 +48,15 @@ class ImageDownloadResponse:
     error: str | None = None
 
 
+@dataclass
+class FileUrlResponse:
+    """Response for file URL retrieval operations."""
+
+    success: bool
+    url: str | None = None
+    error: str | None = None
+
+
 # =============================================================================
 # Tool Functions
 # =============================================================================
@@ -193,3 +202,41 @@ def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
         )
     except requests.RequestException as e:
         return ImageDownloadResponse(success=False, error=f"API request failed: {e}")
+
+
+def get_download_file_url(file_id: str) -> FileUrlResponse:
+    """
+    Get the download URL for a file in PartsBox without downloading it.
+
+    This method returns the URL that can be used to download the file directly.
+    Use this when you need the URL for external purposes (e.g., embedding in
+    documentation, sharing, or downloading via browser).
+
+    Args:
+        file_id: The file identifier (obtained from part data, e.g., part/img-id)
+
+    Returns:
+        FileUrlResponse containing:
+        - success: Whether the URL was generated successfully
+        - url: The download URL for the file
+        - error: Error message (if failed)
+
+    Example:
+        # Get a part and retrieve its image URL
+        part = get_part("part_abc123")
+        if part.data and part.data.get("part/img-id"):
+            url_result = get_download_file_url(part.data["part/img-id"])
+            if url_result.success:
+                print(f"Image URL: {url_result.url}")
+
+    See Also:
+        download_file: For downloading the file content as base64-encoded data
+        download_image: For downloading images for rendering in Claude Desktop
+    """
+    if not file_id:
+        return FileUrlResponse(success=False, error="file_id is required")
+
+    # Files are accessed via GET request to partsbox.com/files/{file_id}
+    url = f"https://partsbox.com/files/{file_id}"
+
+    return FileUrlResponse(success=True, url=url)

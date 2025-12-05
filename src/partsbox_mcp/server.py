@@ -27,7 +27,7 @@ from typing import Any
 from fastmcp import FastMCP
 
 from partsbox_mcp.api import files, lots, orders, parts, projects, stock, storage
-from partsbox_mcp.api.files import FileDownloadResponse, ImageDownloadResponse
+from partsbox_mcp.api.files import FileDownloadResponse, FileUrlResponse, ImageDownloadResponse
 
 # Import FastMCP Image type for proper image responses
 try:
@@ -2200,6 +2200,39 @@ def download_image(file_id: str) -> FastMCPImage | ImageDownloadResponse:
         download_file: For downloading non-image files or when raw bytes are needed
     """
     return files.download_image(file_id)
+
+
+@mcp.tool()
+def get_download_file_url(file_id: str) -> FileUrlResponse:
+    """
+    Get the download URL for a file in PartsBox without downloading it.
+
+    This method returns the URL that can be used to download the file directly.
+    Use this when you need the URL for external purposes (e.g., embedding in
+    documentation, sharing, or downloading via browser).
+
+    Args:
+        file_id: The file identifier (obtained from part data, e.g., part/img-id)
+
+    Returns:
+        FileUrlResponse containing:
+        - success: Whether the URL was generated successfully
+        - url: The download URL for the file
+        - error: Error message (if failed)
+
+    Example:
+        # Get a part and retrieve its image URL
+        part = get_part("part_abc123")
+        if part.data and part.data.get("part/img-id"):
+            url_result = get_download_file_url(part.data["part/img-id"])
+            if url_result.success:
+                print(f"Image URL: {url_result.url}")
+
+    See Also:
+        download_file: For downloading the file content as base64-encoded data
+        download_image: For downloading images for rendering in Claude Desktop
+    """
+    return files.get_download_file_url(file_id)
 
 
 # =============================================================================
