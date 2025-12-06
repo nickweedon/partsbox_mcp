@@ -73,20 +73,84 @@ mcp = FastMCP(
 @mcp.tool()
 def get_image(
     file_id: Annotated[str, "File identifier from part data (part/img-id field)"],
+    max_width: Annotated[
+        int | None,
+        "Maximum width in pixels (default: 1024, set to 0 with max_height=0 for original)",
+    ] = None,
+    max_height: Annotated[
+        int | None,
+        "Maximum height in pixels (default: 1024, set to 0 with max_width=0 for original)",
+    ] = None,
+    quality: Annotated[
+        int | None, "JPEG quality 1-100 (default: 85, only affects JPEG)"
+    ] = None,
 ) -> Image:
     """
-    Download a part image for display.
+    Download a part image for display, with automatic resizing.
 
-    The file_id is obtained from part data (e.g., the part/img-id field).
-    Returns the image in a format suitable for display in Claude Desktop.
+    Images are automatically resized to fit within 1024x1024 pixels by default
+    to optimize for Claude Desktop display. The aspect ratio is always preserved.
+
+    Args:
+        file_id: The file identifier from part data (part/img-id field)
+        max_width: Maximum width in pixels. Default 1024. Set both max_width=0 and
+                   max_height=0 to disable resizing and get original image.
+        max_height: Maximum height in pixels. Default 1024.
+        quality: JPEG compression quality (1-100). Default 85. Only affects JPEG images.
+
+    Returns:
+        Image object for rendering in Claude Desktop
+
+    Examples:
+        - get_image("img_123")  # Default 1024px max
+        - get_image("img_123", max_width=256, max_height=256)  # Thumbnail
+        - get_image("img_123", max_width=0, max_height=0)  # Original size
+    """
+    return files.get_image(file_id, max_width, max_height, quality)
+
+
+@mcp.tool()
+def get_image_info(
+    file_id: Annotated[str, "File identifier from part data (part/img-id field)"],
+) -> files.ImageInfoResponse:
+    """
+    Get metadata about an image without downloading the resized version.
+
+    Returns dimensions, format, and file size of the original image.
+    Use this to check image properties before downloading.
 
     Args:
         file_id: The file identifier from part data (part/img-id field)
 
     Returns:
-        Image object for rendering in Claude Desktop
+        ImageInfoResponse with width, height, format, and file_size_bytes
     """
-    return files.get_image(file_id)
+    return files.get_image_info(file_id)
+
+
+@mcp.tool()
+def get_image_size_estimate(
+    file_id: Annotated[str, "File identifier from part data (part/img-id field)"],
+    max_width: Annotated[int | None, "Maximum width in pixels (default: 1024)"] = None,
+    max_height: Annotated[int | None, "Maximum height in pixels (default: 1024)"] = None,
+    quality: Annotated[int | None, "JPEG quality 1-100 (default: 85)"] = None,
+) -> files.ImageSizeEstimate:
+    """
+    Estimate dimensions and size after resizing (dry run).
+
+    Predicts what get_image would return without actually returning the image.
+    Use this to decide if resize parameters need adjustment.
+
+    Args:
+        file_id: The file identifier from part data (part/img-id field)
+        max_width: Maximum width in pixels. Default 1024.
+        max_height: Maximum height in pixels. Default 1024.
+        quality: JPEG compression quality (1-100). Default 85.
+
+    Returns:
+        ImageSizeEstimate with original and estimated dimensions/size
+    """
+    return files.get_image_size_estimate(file_id, max_width, max_height, quality)
 
 
 @mcp.tool()

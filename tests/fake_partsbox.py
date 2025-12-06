@@ -7,12 +7,14 @@ This module provides:
 - Fixtures for pytest
 """
 
+import io
 import json
 import re
 import time
 from typing import Any
 
 import responses
+from PIL import Image as PILImage
 
 from partsbox_mcp.types import (
     BuildData,
@@ -1574,23 +1576,37 @@ class FakePartsBoxAPI:
 
             # Generate fake file content based on file_id
             if file_id.startswith("img_"):
-                # Return a minimal valid PNG file (1x1 transparent pixel)
-                png_data = bytes([
-                    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,  # PNG signature
-                    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,  # IHDR chunk
-                    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,  # 1x1
-                    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,  # bit depth, color type
-                    0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,  # IDAT chunk
-                    0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,  # compressed data
-                    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
-                    0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,  # IEND chunk
-                    0x42, 0x60, 0x82,
-                ])
+                # Determine image size based on file_id
+                if "large" in file_id:
+                    width, height = 2048, 1536
+                elif "small" in file_id:
+                    width, height = 64, 64
+                elif "wide" in file_id:
+                    width, height = 1920, 1080
+                else:
+                    width, height = 256, 256  # Default test size
+
+                # Determine format based on file_id
+                if "jpeg" in file_id or "jpg" in file_id:
+                    img_format = "JPEG"
+                    content_type = "image/jpeg"
+                    ext = "jpg"
+                else:
+                    img_format = "PNG"
+                    content_type = "image/png"
+                    ext = "png"
+
+                # Generate actual image using Pillow
+                img = PILImage.new("RGB", (width, height), color=(128, 128, 128))
+                output = io.BytesIO()
+                img.save(output, format=img_format)
+                img_data = output.getvalue()
+
                 headers = {
-                    "Content-Type": "image/png",
-                    "Content-Disposition": f'attachment; filename="{file_id}.png"',
+                    "Content-Type": content_type,
+                    "Content-Disposition": f'attachment; filename="{file_id}.{ext}"',
                 }
-                return (200, headers, png_data)
+                return (200, headers, img_data)
             else:
                 # Return generic binary data
                 data = f"File content for {file_id}".encode()
