@@ -849,3 +849,7 @@ fastmcp run prod.fastmcp.json        # Specify config file
 5. **Docstrings are descriptions** — Tool docstrings become the tool description shown to LLMs
 6. **Authentication is HTTP-only** — Auth only applies to HTTP/SSE transports, not STDIO
 7. **Request-scoped context** — Context state doesn't persist between requests
+8. **Use Annotated for parameters** — All tool parameters should use `Annotated[type, "description"]` for LLM hints
+9. **Prefer Resources for read-only data** — Use resources for files, images, and reference data
+10. **Use ToolError for client errors** — Raise `ToolError` for validation failures and API errors
+11. **Environment-controlled middleware** — Use env vars for debug/production behavior

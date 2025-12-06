@@ -10,5 +10,7 @@ services:
     tty: true
     environment:
       - PARTSBOX_API_KEY=${PARTSBOX_API_KEY}
+      - PARTSBOX_MCP_DEBUG=true
+      - PARTSBOX_MCP_MASK_ERRORS=false
     env_file:
       - .env

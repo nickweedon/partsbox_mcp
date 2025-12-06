@@ -34,6 +34,14 @@ PARTSBOX_API_KEY=partsboxapi_your_api_key_here
 
 **Security Note:** Guard your API key carefully, as it provides full access to your PartsBox database.
 
+#### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PARTSBOX_API_KEY` | (required) | Your PartsBox API key |
+| `PARTSBOX_MCP_DEBUG` | `true` | Enable timing/logging middleware |
+| `PARTSBOX_MCP_MASK_ERRORS` | `false` | Hide internal error details from clients |
+
 ### 3. Run the server
 ```bash
 uv run python partsbox_mcp_server.py
@@ -149,10 +157,17 @@ The PartsBox API is operation-oriented (not REST) and provides:
 | `delete_order_entry` | Remove an item from an order |
 | `receive_order` | Process received inventory |
 
-### Files API
-| Tool | Description |
-|------|-------------|
-| `download_file` | Download a file (image, datasheet) associated with a part |
+## MCP Resources
+
+Resources provide read-only access to files and images via URI templates:
+
+| Resource URI | Description |
+|--------------|-------------|
+| `partsbox://image/{file_id}` | Download and render part images directly in Claude Desktop |
+| `partsbox://file/{file_id}` | Download files (datasheets, PDFs, etc.) |
+| `partsbox://file-url/{file_id}` | Get the download URL without fetching the file |
+
+The `file_id` is obtained from part data (e.g., the `part/img-id` field returned by `get_part` or `list_parts`).
 
 ## JMESPath Query Support
 

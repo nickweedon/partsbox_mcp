@@ -224,9 +224,63 @@ uv run python partsbox_mcp_server.py
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `PARTSBOX_API_KEY` | Your PartsBox API key (format: `partsboxapi_...`) |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PARTSBOX_API_KEY` | (required) | Your PartsBox API key (format: `partsboxapi_...`) |
+| `PARTSBOX_MCP_DEBUG` | `true` | Enable timing/logging middleware |
+| `PARTSBOX_MCP_MASK_ERRORS` | `false` | Hide internal error details from clients |
+
+## Resources vs Tools
+
+This server exposes both MCP **Resources** and **Tools**:
+
+### Resources (Read-Only)
+Resources provide read-only data access via URI templates:
+- `partsbox://image/{file_id}` - Download and render part images
+- `partsbox://file/{file_id}` - Download files (datasheets, PDFs)
+- `partsbox://file-url/{file_id}` - Get direct download URL
+
+Use resources when you need to **read** file/image data. The `file_id` is obtained from part data (e.g., the `part/img-id` field).
+
+### Tools (Operations)
+Tools perform operations that may have side effects:
+- Query and filter data (list_parts, list_storage_locations, etc.)
+- Create/update/delete records
+- Manage stock levels
+- Process orders
+
+## Error Handling
+
+Use `ToolError` for client-facing errors in tool implementations:
+
+```python
+from fastmcp import ToolError
+
+async def get_part(part_id: str) -> PartResponse:
+    if not part_id:
+        raise ToolError("part_id is required")
+
+    try:
+        result = await api_call(part_id)
+        return PartResponse(success=True, data=result)
+    except APIError as e:
+        raise ToolError(f"Failed to fetch part: {e}")
+```
+
+Use `ResourceError` for resource failures:
+
+```python
+from fastmcp.exceptions import ResourceError
+
+@mcp.resource("partsbox://image/{file_id}")
+def image_resource(file_id: str) -> Image:
+    result = files.download_image_bytes(file_id)
+    if result.error:
+        raise ResourceError(result.error)
+    return Image(data=result.data, media_type=result.content_type)
+```
+
+When `PARTSBOX_MCP_MASK_ERRORS=true`, only `ToolError` and `ResourceError` messages are exposed to clients.
 
 ## Testing
 

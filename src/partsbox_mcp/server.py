@@ -1,7 +1,7 @@
 """
 PartsBox MCP Server - Main Entry Point
 
-This module sets up the FastMCP server and registers all tools
+This module sets up the FastMCP server and registers all tools and resources
 from the API modules.
 
 IMPORTANT DOCUMENTATION RULE:
@@ -22,22 +22,108 @@ remains the only reliable way for LLMs to understand output structure.
 ================================================================================
 """
 
-from typing import Any
+import os
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ResourceError
+from fastmcp.utilities.types import Image
 
 from partsbox_mcp.api import files, lots, orders, parts, projects, stock, storage
-from partsbox_mcp.api.files import FileDownloadResponse, FileUrlResponse, ImageDownloadResponse
-
-from mcp.types import ImageContent
-
 from partsbox_mcp.client import CacheInfo, cache
 
 # =============================================================================
 # Server Setup
 # =============================================================================
 
-mcp = FastMCP("PartsBox MCP Server")
+# Error masking disabled by default, can be enabled for production
+mask_errors = os.getenv("PARTSBOX_MCP_MASK_ERRORS", "false").lower() in ("true", "1", "yes")
+
+mcp = FastMCP(
+    name="PartsBox MCP Server",
+    instructions="""
+    PartsBox MCP Server provides tools and resources for managing electronic component inventory.
+
+    ## Resources (Read-Only Data Access)
+
+    Use these URIs to access files and images:
+    - partsbox://image/{file_id} - Render part images directly
+    - partsbox://file/{file_id} - Download datasheets and files
+    - partsbox://file-url/{file_id} - Get download URL without fetching
+
+    ## Tools (Operations)
+
+    Key capabilities organized by domain:
+    - **Parts**: Create, update, delete, and search parts with JMESPath filtering
+    - **Stock**: Track inventory levels, add/remove/move stock between locations
+    - **Lots**: Manage batch/lot tracking with expiration dates and custom fields
+    - **Storage**: Organize storage locations hierarchically with settings
+    - **Projects**: Manage BOMs (Bills of Materials) and production builds
+    - **Orders**: Track purchase orders from creation through receiving
+
+    ## JMESPath Queries
+
+    Most list operations support JMESPath filtering. Use double quotes for field
+    identifiers containing '/' (e.g., "part/name", NOT backticks).
+
+    Custom functions: nvl(), int(), str(), regex_replace()
+    """,
+    mask_error_details=mask_errors,
+    on_duplicate_tools="error",
+    on_duplicate_resources="error",
+)
+
+
+# =============================================================================
+# Resources
+# =============================================================================
+
+
+@mcp.resource("partsbox://image/{file_id}")
+def image_resource(file_id: str) -> Image:
+    """
+    Download a part image for rendering in Claude Desktop.
+
+    The file_id is obtained from part data (e.g., the part/img-id field).
+    Use this resource to display images of electronic components.
+
+    Example URI: partsbox://image/abc123def456
+    """
+    result = files.download_image_bytes(file_id)
+    if result.error:
+        raise ResourceError(result.error)
+    return Image(data=result.data, media_type=result.content_type)
+
+
+@mcp.resource("partsbox://file/{file_id}")
+def file_resource(file_id: str) -> bytes:
+    """
+    Download a file (datasheet, image, etc.) from PartsBox.
+
+    The file_id is obtained from part data. Returns binary content
+    suitable for saving to disk or further processing.
+
+    Example URI: partsbox://file/abc123def456
+    """
+    result = files.download_file_bytes(file_id)
+    if result.error:
+        raise ResourceError(result.error)
+    return result.data
+
+
+@mcp.resource("partsbox://file-url/{file_id}")
+def file_url_resource(file_id: str) -> str:
+    """
+    Get the download URL for a PartsBox file without downloading it.
+
+    Use this when you need the URL for external purposes (embedding,
+    sharing, or downloading via browser).
+
+    Example URI: partsbox://file-url/abc123def456
+    """
+    if not file_id:
+        raise ResourceError("file_id is required")
+    return files.get_file_url(file_id)
 
 
 # =============================================================================
@@ -47,10 +133,10 @@ mcp = FastMCP("PartsBox MCP Server")
 
 @mcp.tool()
 def list_parts(
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
 ) -> parts.PaginatedPartsResponse:
     """
     List all parts with optional JMESPath query and pagination.
@@ -150,7 +236,7 @@ def list_parts(
         }
 
     See Also:
-        download_image: Download part images (part/img-id) as base64 for rendering in Claude Desktop
+        Use the partsbox://image/{file_id} resource to render part images (part/img-id) in Claude Desktop
     """
     return parts.list_parts(
         limit=limit,
@@ -161,7 +247,9 @@ def list_parts(
 
 
 @mcp.tool()
-def get_part(part_id: str) -> parts.PartResponse:
+def get_part(
+    part_id: Annotated[str, "Unique identifier of the part"],
+) -> parts.PartResponse:
     """
     Get detailed information for a specific part.
 
@@ -232,26 +320,26 @@ def get_part(part_id: str) -> parts.PartResponse:
         }
 
     See Also:
-        download_image: Download part images (part/img-id) as base64 for rendering in Claude Desktop
+        Use the partsbox://image/{file_id} resource to render part images (part/img-id) in Claude Desktop
     """
     return parts.get_part(part_id)
 
 
 @mcp.tool()
 def create_part(
-    name: str,
-    part_type: str = "local",
-    description: str | None = None,
-    notes: str | None = None,
-    footprint: str | None = None,
-    manufacturer: str | None = None,
-    mpn: str | None = None,
-    tags: list[str] | None = None,
-    cad_keys: list[str] | None = None,
-    low_stock_threshold: int | None = None,
-    attrition_percentage: float | None = None,
-    attrition_quantity: int | None = None,
-    custom_fields: dict[str, Any] | None = None,
+    name: Annotated[str, "Part name (required)"],
+    part_type: Annotated[str, "Part type: local, linked, sub-assembly, or meta"] = "local",
+    description: Annotated[str | None, "Part description"] = None,
+    notes: Annotated[str | None, "User notes (Markdown supported)"] = None,
+    footprint: Annotated[str | None, "Physical package footprint"] = None,
+    manufacturer: Annotated[str | None, "Manufacturer name"] = None,
+    mpn: Annotated[str | None, "Manufacturer part number"] = None,
+    tags: Annotated[list[str] | None, "List of tags for categorization"] = None,
+    cad_keys: Annotated[list[str] | None, "CAD keys for matching"] = None,
+    low_stock_threshold: Annotated[int | None, "Low stock warning threshold"] = None,
+    attrition_percentage: Annotated[float | None, "Attrition percentage for manufacturing"] = None,
+    attrition_quantity: Annotated[int | None, "Fixed attrition quantity"] = None,
+    custom_fields: Annotated[dict[str, Any] | None, "Custom field data as key-value pairs"] = None,
 ) -> parts.PartOperationResponse:
     """
     Create a new part.
@@ -306,19 +394,19 @@ def create_part(
 
 @mcp.tool()
 def update_part(
-    part_id: str,
-    name: str | None = None,
-    description: str | None = None,
-    notes: str | None = None,
-    footprint: str | None = None,
-    manufacturer: str | None = None,
-    mpn: str | None = None,
-    tags: list[str] | None = None,
-    cad_keys: list[str] | None = None,
-    low_stock_threshold: int | None = None,
-    attrition_percentage: float | None = None,
-    attrition_quantity: int | None = None,
-    custom_fields: dict[str, Any] | None = None,
+    part_id: Annotated[str, "Unique identifier of the part"],
+    name: Annotated[str | None, "New part name"] = None,
+    description: Annotated[str | None, "New part description"] = None,
+    notes: Annotated[str | None, "New notes (Markdown supported)"] = None,
+    footprint: Annotated[str | None, "New physical package footprint"] = None,
+    manufacturer: Annotated[str | None, "New manufacturer name"] = None,
+    mpn: Annotated[str | None, "New manufacturer part number"] = None,
+    tags: Annotated[list[str] | None, "New tags list (replaces existing)"] = None,
+    cad_keys: Annotated[list[str] | None, "New CAD keys (replaces existing)"] = None,
+    low_stock_threshold: Annotated[int | None, "New low stock warning threshold"] = None,
+    attrition_percentage: Annotated[float | None, "New attrition percentage"] = None,
+    attrition_quantity: Annotated[int | None, "New fixed attrition quantity"] = None,
+    custom_fields: Annotated[dict[str, Any] | None, "Custom field updates"] = None,
 ) -> parts.PartOperationResponse:
     """
     Update an existing part.
@@ -372,7 +460,9 @@ def update_part(
 
 
 @mcp.tool()
-def delete_part(part_id: str) -> parts.PartOperationResponse:
+def delete_part(
+    part_id: Annotated[str, "Unique identifier of the part to delete"],
+) -> parts.PartOperationResponse:
     """
     Delete a part.
 
@@ -389,8 +479,8 @@ def delete_part(part_id: str) -> parts.PartOperationResponse:
 
 @mcp.tool()
 def add_meta_part_ids(
-    part_id: str,
-    member_ids: list[str],
+    part_id: Annotated[str, "Meta-part identifier"],
+    member_ids: Annotated[list[str], "Part IDs to add as members"],
 ) -> parts.PartOperationResponse:
     """
     Add equivalent substitutes (members) to a meta-part.
@@ -412,8 +502,8 @@ def add_meta_part_ids(
 
 @mcp.tool()
 def remove_meta_part_ids(
-    part_id: str,
-    member_ids: list[str],
+    part_id: Annotated[str, "Meta-part identifier"],
+    member_ids: Annotated[list[str], "Part IDs to remove from meta-part"],
 ) -> parts.PartOperationResponse:
     """
     Remove members from a meta-part.
@@ -432,8 +522,8 @@ def remove_meta_part_ids(
 
 @mcp.tool()
 def add_substitute_ids(
-    part_id: str,
-    substitute_ids: list[str],
+    part_id: Annotated[str, "Part identifier"],
+    substitute_ids: Annotated[list[str], "Part IDs to add as substitutes"],
 ) -> parts.PartOperationResponse:
     """
     Add substitutes to a part.
@@ -456,8 +546,8 @@ def add_substitute_ids(
 
 @mcp.tool()
 def remove_substitute_ids(
-    part_id: str,
-    substitute_ids: list[str],
+    part_id: Annotated[str, "Part identifier"],
+    substitute_ids: Annotated[list[str], "Part IDs to remove as substitutes"],
 ) -> parts.PartOperationResponse:
     """
     Remove substitutes from a part.
@@ -476,11 +566,11 @@ def remove_substitute_ids(
 
 @mcp.tool()
 def get_part_storage(
-    part_id: str,
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
+    part_id: Annotated[str, "Part identifier"],
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
 ) -> parts.PaginatedSourcesResponse:
     """
     List stock sources for a part, aggregating lots by storage location.
@@ -540,11 +630,11 @@ def get_part_storage(
 
 @mcp.tool()
 def get_part_lots(
-    part_id: str,
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
+    part_id: Annotated[str, "Part identifier"],
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
 ) -> parts.PaginatedSourcesResponse:
     """
     List stock sources for a part without aggregating lots.
@@ -602,7 +692,9 @@ def get_part_lots(
 
 
 @mcp.tool()
-def get_part_stock(part_id: str) -> parts.PartStockResponse:
+def get_part_stock(
+    part_id: Annotated[str, "Part identifier"],
+) -> parts.PartStockResponse:
     """
     Get the total stock count for a part.
 
@@ -632,15 +724,15 @@ def get_part_stock(part_id: str) -> parts.PartStockResponse:
 
 @mcp.tool()
 def add_stock(
-    part_id: str,
-    storage_id: str,
-    quantity: int,
-    comments: str | None = None,
-    price: float | None = None,
-    currency: str | None = None,
-    lot_name: str | None = None,
-    lot_description: str | None = None,
-    order_id: str | None = None,
+    part_id: Annotated[str, "Part identifier"],
+    storage_id: Annotated[str, "Storage location identifier"],
+    quantity: Annotated[int, "Quantity to add (positive integer)"],
+    comments: Annotated[str | None, "Optional notes for this stock entry"] = None,
+    price: Annotated[float | None, "Unit price paid"] = None,
+    currency: Annotated[str | None, "Currency code (e.g., 'usd', 'eur')"] = None,
+    lot_name: Annotated[str | None, "Lot/batch name for tracking"] = None,
+    lot_description: Annotated[str | None, "Lot description"] = None,
+    order_id: Annotated[str | None, "Associated order ID if from an order"] = None,
 ) -> stock.StockOperationResponse:
     """
     Add inventory for a part.
@@ -685,11 +777,11 @@ def add_stock(
 
 @mcp.tool()
 def remove_stock(
-    part_id: str,
-    storage_id: str,
-    quantity: int,
-    comments: str | None = None,
-    lot_id: str | None = None,
+    part_id: Annotated[str, "Part identifier"],
+    storage_id: Annotated[str, "Storage location identifier"],
+    quantity: Annotated[int, "Quantity to remove (positive integer)"],
+    comments: Annotated[str | None, "Optional notes for this removal"] = None,
+    lot_id: Annotated[str | None, "Specific lot ID to remove from"] = None,
 ) -> stock.StockOperationResponse:
     """
     Remove parts from inventory.
@@ -718,12 +810,12 @@ def remove_stock(
 
 @mcp.tool()
 def move_stock(
-    part_id: str,
-    source_storage_id: str,
-    target_storage_id: str,
-    quantity: int,
-    comments: str | None = None,
-    lot_id: str | None = None,
+    part_id: Annotated[str, "Part identifier"],
+    source_storage_id: Annotated[str, "Source storage location ID"],
+    target_storage_id: Annotated[str, "Target storage location ID"],
+    quantity: Annotated[int, "Quantity to move (positive integer)"],
+    comments: Annotated[str | None, "Optional notes for this move"] = None,
+    lot_id: Annotated[str | None, "Specific lot ID to move from"] = None,
 ) -> stock.StockOperationResponse:
     """
     Transfer stock to a different location.
@@ -762,12 +854,12 @@ def move_stock(
 
 @mcp.tool()
 def update_stock(
-    part_id: str,
-    timestamp: int,
-    quantity: int | None = None,
-    comments: str | None = None,
-    price: float | None = None,
-    currency: str | None = None,
+    part_id: Annotated[str, "Part identifier"],
+    timestamp: Annotated[int, "Stock entry timestamp (UNIX UTC milliseconds)"],
+    quantity: Annotated[int | None, "New quantity for the entry"] = None,
+    comments: Annotated[str | None, "New comments for the entry"] = None,
+    price: Annotated[float | None, "New unit price"] = None,
+    currency: Annotated[str | None, "New currency code"] = None,
 ) -> stock.StockOperationResponse:
     """
     Modify an existing stock entry.
@@ -803,10 +895,10 @@ def update_stock(
 
 @mcp.tool()
 def list_lots(
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
 ) -> lots.PaginatedLotsResponse:
     """
     List all lots with optional JMESPath query and pagination.
@@ -871,7 +963,9 @@ def list_lots(
 
 
 @mcp.tool()
-def get_lot(lot_id: str) -> lots.LotResponse:
+def get_lot(
+    lot_id: Annotated[str, "Unique identifier of the lot"],
+) -> lots.LotResponse:
     """
     Get detailed information for a specific lot.
 
@@ -903,13 +997,13 @@ def get_lot(lot_id: str) -> lots.LotResponse:
 
 @mcp.tool()
 def update_lot(
-    lot_id: str,
-    name: str | None = None,
-    description: str | None = None,
-    comments: str | None = None,
-    expiration_date: int | None = None,
-    tags: list[str] | None = None,
-    custom_fields: dict[str, Any] | None = None,
+    lot_id: Annotated[str, "Unique identifier of the lot"],
+    name: Annotated[str | None, "New lot name"] = None,
+    description: Annotated[str | None, "New lot description"] = None,
+    comments: Annotated[str | None, "New lot comments"] = None,
+    expiration_date: Annotated[int | None, "Expiration timestamp (UNIX UTC ms)"] = None,
+    tags: Annotated[list[str] | None, "New tags list (replaces existing)"] = None,
+    custom_fields: Annotated[dict[str, Any] | None, "Custom field updates"] = None,
 ) -> lots.LotUpdateResponse:
     """
     Update lot information.
@@ -961,11 +1055,11 @@ def update_lot(
 
 @mcp.tool()
 def list_storage_locations(
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
-    include_archived: bool = False,
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
+    include_archived: Annotated[bool, "Include archived locations in results"] = False,
 ) -> storage.PaginatedStorageResponse:
     """
     List all storage locations with optional JMESPath query and pagination.
@@ -1034,7 +1128,9 @@ def list_storage_locations(
 
 
 @mcp.tool()
-def get_storage_location(storage_id: str) -> storage.StorageResponse:
+def get_storage_location(
+    storage_id: Annotated[str, "Unique identifier of the storage location"],
+) -> storage.StorageResponse:
     """
     Get detailed information for a specific storage location.
 
@@ -1070,9 +1166,9 @@ def get_storage_location(storage_id: str) -> storage.StorageResponse:
 
 @mcp.tool()
 def update_storage_location(
-    storage_id: str,
-    comments: str | None = None,
-    tags: list[str] | None = None,
+    storage_id: Annotated[str, "Unique identifier of the storage location"],
+    comments: Annotated[str | None, "New comments/description"] = None,
+    tags: Annotated[list[str] | None, "New tags list (replaces existing)"] = None,
 ) -> storage.StorageOperationResponse:
     """
     Update storage location metadata.
@@ -1097,8 +1193,8 @@ def update_storage_location(
 
 @mcp.tool()
 def rename_storage_location(
-    storage_id: str,
-    new_name: str,
+    storage_id: Annotated[str, "Unique identifier of the storage location"],
+    new_name: Annotated[str, "New name for the storage location"],
 ) -> storage.StorageOperationResponse:
     """
     Rename a storage location.
@@ -1120,7 +1216,9 @@ def rename_storage_location(
 
 
 @mcp.tool()
-def archive_storage_location(storage_id: str) -> storage.StorageOperationResponse:
+def archive_storage_location(
+    storage_id: Annotated[str, "Unique identifier of the storage location"],
+) -> storage.StorageOperationResponse:
     """
     Archive a storage location (hide from normal usage).
 
@@ -1137,7 +1235,9 @@ def archive_storage_location(storage_id: str) -> storage.StorageOperationRespons
 
 
 @mcp.tool()
-def restore_storage_location(storage_id: str) -> storage.StorageOperationResponse:
+def restore_storage_location(
+    storage_id: Annotated[str, "Unique identifier of the storage location"],
+) -> storage.StorageOperationResponse:
     """
     Restore an archived storage location.
 
@@ -1155,10 +1255,10 @@ def restore_storage_location(storage_id: str) -> storage.StorageOperationRespons
 
 @mcp.tool()
 def change_storage_settings(
-    storage_id: str,
-    full: bool | None = None,
-    single_part: bool | None = None,
-    existing_parts_only: bool | None = None,
+    storage_id: Annotated[str, "Unique identifier of the storage location"],
+    full: Annotated[bool | None, "Mark location as full (no new stock)"] = None,
+    single_part: Annotated[bool | None, "Restrict to single part type only"] = None,
+    existing_parts_only: Annotated[bool | None, "Only allow parts already stored here"] = None,
 ) -> storage.StorageOperationResponse:
     """
     Modify storage location settings.
@@ -1187,11 +1287,11 @@ def change_storage_settings(
 
 @mcp.tool()
 def list_storage_parts(
-    storage_id: str,
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
+    storage_id: Annotated[str, "Storage location identifier"],
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
 ) -> storage.PaginatedStoragePartsResponse:
     """
     List aggregated stock by part in a storage location.
@@ -1253,11 +1353,11 @@ def list_storage_parts(
 
 @mcp.tool()
 def list_storage_lots(
-    storage_id: str,
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
+    storage_id: Annotated[str, "Storage location identifier"],
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
 ) -> storage.PaginatedStorageLotsResponse:
     """
     List individual lots in a storage location (not aggregated by part).
@@ -1324,11 +1424,11 @@ def list_storage_lots(
 
 @mcp.tool()
 def list_projects(
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
-    include_archived: bool = False,
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
+    include_archived: Annotated[bool, "Include archived projects in results"] = False,
 ) -> projects.PaginatedProjectsResponse:
     """
     List all projects with optional JMESPath query and pagination.
@@ -1394,7 +1494,9 @@ def list_projects(
 
 
 @mcp.tool()
-def get_project(project_id: str) -> projects.ProjectResponse:
+def get_project(
+    project_id: Annotated[str, "Unique identifier of the project"],
+) -> projects.ProjectResponse:
     """
     Get detailed information for a specific project.
 
@@ -1427,10 +1529,10 @@ def get_project(project_id: str) -> projects.ProjectResponse:
 
 @mcp.tool()
 def create_project(
-    name: str,
-    description: str | None = None,
-    comments: str | None = None,
-    entries: list[dict[str, Any]] | None = None,
+    name: Annotated[str, "Project name (required)"],
+    description: Annotated[str | None, "Project description"] = None,
+    comments: Annotated[str | None, "Project comments/notes"] = None,
+    entries: Annotated[list[dict[str, Any]] | None, "Initial BOM entries"] = None,
 ) -> projects.ProjectOperationResponse:
     """
     Create a new project.
@@ -1472,10 +1574,10 @@ def create_project(
 
 @mcp.tool()
 def update_project(
-    project_id: str,
-    name: str | None = None,
-    description: str | None = None,
-    comments: str | None = None,
+    project_id: Annotated[str, "Unique identifier of the project"],
+    name: Annotated[str | None, "New project name"] = None,
+    description: Annotated[str | None, "New project description"] = None,
+    comments: Annotated[str | None, "New project comments"] = None,
 ) -> projects.ProjectOperationResponse:
     """
     Update project metadata.
@@ -1516,7 +1618,9 @@ def update_project(
 
 
 @mcp.tool()
-def delete_project(project_id: str) -> projects.ProjectOperationResponse:
+def delete_project(
+    project_id: Annotated[str, "Unique identifier of the project to delete"],
+) -> projects.ProjectOperationResponse:
     """
     Delete a project.
 
@@ -1532,7 +1636,9 @@ def delete_project(project_id: str) -> projects.ProjectOperationResponse:
 
 
 @mcp.tool()
-def archive_project(project_id: str) -> projects.ProjectOperationResponse:
+def archive_project(
+    project_id: Annotated[str, "Unique identifier of the project to archive"],
+) -> projects.ProjectOperationResponse:
     """
     Archive a project.
 
@@ -1548,7 +1654,9 @@ def archive_project(project_id: str) -> projects.ProjectOperationResponse:
 
 
 @mcp.tool()
-def restore_project(project_id: str) -> projects.ProjectOperationResponse:
+def restore_project(
+    project_id: Annotated[str, "Unique identifier of the project to restore"],
+) -> projects.ProjectOperationResponse:
     """
     Restore an archived project.
 
@@ -1565,12 +1673,12 @@ def restore_project(project_id: str) -> projects.ProjectOperationResponse:
 
 @mcp.tool()
 def get_project_entries(
-    project_id: str,
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
-    build_id: str | None = None,
+    project_id: Annotated[str, "Project identifier"],
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
+    build_id: Annotated[str | None, "Filter entries for a specific build"] = None,
 ) -> projects.PaginatedEntriesResponse:
     """
     Get BOM entries for a project.
@@ -1638,8 +1746,8 @@ def get_project_entries(
 
 @mcp.tool()
 def add_project_entries(
-    project_id: str,
-    entries: list[dict[str, Any]],
+    project_id: Annotated[str, "Project identifier"],
+    entries: Annotated[list[dict[str, Any]], "BOM entries with part-id and quantity"],
 ) -> projects.ProjectOperationResponse:
     """
     Add BOM entries to a project.
@@ -1664,8 +1772,8 @@ def add_project_entries(
 
 @mcp.tool()
 def update_project_entries(
-    project_id: str,
-    entries: list[dict[str, Any]],
+    project_id: Annotated[str, "Project identifier"],
+    entries: Annotated[list[dict[str, Any]], "Entry updates with entry/id and fields"],
 ) -> projects.ProjectOperationResponse:
     """
     Update existing BOM entries.
@@ -1687,8 +1795,8 @@ def update_project_entries(
 
 @mcp.tool()
 def delete_project_entries(
-    project_id: str,
-    entry_ids: list[str],
+    project_id: Annotated[str, "Project identifier"],
+    entry_ids: Annotated[list[str], "Entry IDs to delete from the BOM"],
 ) -> projects.ProjectOperationResponse:
     """
     Delete BOM entries from a project.
@@ -1710,11 +1818,11 @@ def delete_project_entries(
 
 @mcp.tool()
 def get_project_builds(
-    project_id: str,
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
+    project_id: Annotated[str, "Project identifier"],
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
 ) -> projects.PaginatedBuildsResponse:
     """
     List all builds for a project.
@@ -1769,7 +1877,9 @@ def get_project_builds(
 
 
 @mcp.tool()
-def get_build(build_id: str) -> projects.BuildResponse:
+def get_build(
+    build_id: Annotated[str, "Unique identifier of the build"],
+) -> projects.BuildResponse:
     """
     Get detailed information for a specific build.
 
@@ -1794,8 +1904,8 @@ def get_build(build_id: str) -> projects.BuildResponse:
 
 @mcp.tool()
 def update_build(
-    build_id: str,
-    comments: str | None = None,
+    build_id: Annotated[str, "Unique identifier of the build"],
+    comments: Annotated[str | None, "New build comments"] = None,
 ) -> projects.BuildResponse:
     """
     Update build metadata.
@@ -1830,10 +1940,10 @@ def update_build(
 
 @mcp.tool()
 def list_orders(
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
 ) -> orders.PaginatedOrdersResponse:
     """
     List all orders with optional JMESPath query and pagination.
@@ -1896,7 +2006,9 @@ def list_orders(
 
 
 @mcp.tool()
-def get_order(order_id: str) -> orders.OrderResponse:
+def get_order(
+    order_id: Annotated[str, "Unique identifier of the order"],
+) -> orders.OrderResponse:
     """
     Get detailed information for a specific order.
 
@@ -1929,10 +2041,10 @@ def get_order(order_id: str) -> orders.OrderResponse:
 
 @mcp.tool()
 def create_order(
-    vendor: str,
-    order_number: str | None = None,
-    comments: str | None = None,
-    entries: list[dict[str, Any]] | None = None,
+    vendor: Annotated[str, "Vendor/supplier name (required)"],
+    order_number: Annotated[str | None, "Vendor's order number"] = None,
+    comments: Annotated[str | None, "Order comments/notes"] = None,
+    entries: Annotated[list[dict[str, Any]] | None, "Initial order line items"] = None,
 ) -> orders.OrderOperationResponse:
     """
     Create a new purchase order.
@@ -1974,11 +2086,11 @@ def create_order(
 
 @mcp.tool()
 def get_order_entries(
-    order_id: str,
-    limit: int = 50,
-    offset: int = 0,
-    cache_key: str | None = None,
-    query: str | None = None,
+    order_id: Annotated[str, "Order identifier"],
+    limit: Annotated[int, "Maximum items to return (1-1000)"] = 50,
+    offset: Annotated[int, "Starting index in query results"] = 0,
+    cache_key: Annotated[str | None, "Reuse cached data from previous call"] = None,
+    query: Annotated[str | None, "JMESPath expression for filtering/projection"] = None,
 ) -> orders.PaginatedOrderEntriesResponse:
     """
     List stock items in an order.
@@ -2046,8 +2158,8 @@ def get_order_entries(
 
 @mcp.tool()
 def add_order_entries(
-    order_id: str,
-    entries: list[dict[str, Any]],
+    order_id: Annotated[str, "Order identifier"],
+    entries: Annotated[list[dict[str, Any]], "Order entries with part-id and quantity"],
 ) -> orders.OrderOperationResponse:
     """
     Add items to an open order.
@@ -2072,10 +2184,10 @@ def add_order_entries(
 
 @mcp.tool()
 def receive_order(
-    order_id: str,
-    storage_id: str,
-    entries: list[dict[str, Any]] | None = None,
-    comments: str | None = None,
+    order_id: Annotated[str, "Order identifier"],
+    storage_id: Annotated[str, "Storage location to receive items into"],
+    entries: Annotated[list[dict[str, Any]] | None, "Specific entries to receive (or all)"] = None,
+    comments: Annotated[str | None, "Receiving notes/comments"] = None,
 ) -> orders.OrderOperationResponse:
     """
     Process received inventory into storage.
@@ -2103,8 +2215,8 @@ def receive_order(
 
 @mcp.tool()
 def delete_order_entry(
-    order_id: str,
-    stock_id: str,
+    order_id: Annotated[str, "Order identifier"],
+    stock_id: Annotated[str, "Stock entry ID to delete"],
 ) -> orders.OrderOperationResponse:
     """
     Delete an entry from an open order.
@@ -2124,119 +2236,14 @@ def delete_order_entry(
 
 
 # =============================================================================
-# Files Tools
-# =============================================================================
-
-
-@mcp.tool()
-def download_file(file_id: str) -> FileDownloadResponse:
-    """
-    Download a file from PartsBox.
-
-    Files in PartsBox are typically images or datasheets associated with parts.
-    The file_id can be obtained from part data (e.g., part/img-id field).
-
-    This method returns raw binary data suitable for saving to disk or processing
-    in binary form (e.g., PDFs, datasheets).
-
-    For images that need to be rendered by Claude Desktop, use download_image()
-    instead, which returns an MCP ImageContent object for direct rendering.
-
-    Args:
-        file_id: The file identifier (obtained from part data, e.g., part/img-id)
-
-    Returns:
-        FileDownloadResponse containing:
-        - success: Whether the download succeeded
-        - data: Raw file bytes (if successful)
-        - content_type: MIME type of the file (e.g., "image/png", "application/pdf")
-        - filename: Suggested filename from server (if provided)
-        - error: Error message (if failed)
-
-    Example:
-        # Get a part and download its image
-        part = get_part("part_abc123")
-        if part.data and part.data.get("part/img-id"):
-            file_result = download_file(part.data["part/img-id"])
-            if file_result.success:
-                with open("part_image.png", "wb") as f:
-                    f.write(file_result.data)
-
-    See Also:
-        download_image: For downloading images as MCP ImageContent for rendering
-    """
-    return files.download_file(file_id)
-
-
-@mcp.tool()
-def download_image(file_id: str) -> ImageContent | ImageDownloadResponse:
-    """
-    Download an image from PartsBox for rendering in Claude Desktop.
-
-    This method returns an MCP ImageContent object that Claude Desktop can render
-    directly. The image is fetched from PartsBox and displayed immediately
-    without needing manual decoding or file operations.
-
-    Args:
-        file_id: The file identifier (obtained from part data, e.g., part/img-id)
-
-    Returns:
-        ImageContent for successful downloads (renders directly in Claude Desktop)
-        ImageDownloadResponse for errors
-
-    Example:
-        # Get a part and display its image
-        part = get_part("part_abc123")
-        if part.data and part.data.get("part/img-id"):
-            # This will render the image directly in Claude Desktop
-            image = download_image(part.data["part/img-id"])
-
-    See Also:
-        download_file: For downloading non-image files or when raw bytes are needed
-    """
-    return files.download_image(file_id)
-
-
-@mcp.tool()
-def get_download_file_url(file_id: str) -> FileUrlResponse:
-    """
-    Get the download URL for a file in PartsBox without downloading it.
-
-    This method returns the URL that can be used to download the file directly.
-    Use this when you need the URL for external purposes (e.g., embedding in
-    documentation, sharing, or downloading via browser).
-
-    Args:
-        file_id: The file identifier (obtained from part data, e.g., part/img-id)
-
-    Returns:
-        FileUrlResponse containing:
-        - success: Whether the URL was generated successfully
-        - url: The download URL for the file
-        - error: Error message (if failed)
-
-    Example:
-        # Get a part and retrieve its image URL
-        part = get_part("part_abc123")
-        if part.data and part.data.get("part/img-id"):
-            url_result = get_download_file_url(part.data["part/img-id"])
-            if url_result.success:
-                print(f"Image URL: {url_result.url}")
-
-    See Also:
-        download_file: For downloading the file content as base64-encoded data
-        download_image: For downloading images for rendering in Claude Desktop
-    """
-    return files.get_download_file_url(file_id)
-
-
-# =============================================================================
 # Cache Tools
 # =============================================================================
 
 
 @mcp.tool()
-def get_cache_info(cache_key: str) -> CacheInfo:
+def get_cache_info(
+    cache_key: Annotated[str, "Cache key from a previous paginated request"],
+) -> CacheInfo:
     """
     Get information about a pagination cache entry.
 

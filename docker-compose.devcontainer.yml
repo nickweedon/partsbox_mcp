@@ -11,6 +11,8 @@ services:
     environment:
       - PARTSBOX_API_KEY=${PARTSBOX_API_KEY}
       - HOST_USER=${USER}
+      - PARTSBOX_MCP_DEBUG=true
+      - PARTSBOX_MCP_MASK_ERRORS=false
     env_file:
       - .env
     # Run as vscode user for devcontainer
