@@ -230,24 +230,24 @@ uv run python partsbox_mcp_server.py
 | `PARTSBOX_MCP_DEBUG` | `true` | Enable timing/logging middleware |
 | `PARTSBOX_MCP_MASK_ERRORS` | `false` | Hide internal error details from clients |
 
-## Resources vs Tools
+## Tools
 
-This server exposes both MCP **Resources** and **Tools**:
+This server exposes MCP **Tools** for all operations:
 
-### Resources (Read-Only)
-Resources provide read-only data access via URI templates:
-- `partsbox://image/{file_id}` - Download and render part images
-- `partsbox://file/{file_id}` - Download files (datasheets, PDFs)
-- `partsbox://file-url/{file_id}` - Get direct download URL
+- **Parts**: Query and filter parts (list_parts, get_part, etc.), create/update/delete
+- **Stock**: Manage inventory levels, add/remove/move stock between locations
+- **Lots**: Manage batch/lot tracking
+- **Storage**: Organize storage locations
+- **Projects**: Manage BOMs and production builds
+- **Orders**: Track purchase orders
+- **Files**: Download images and files (get_image, get_file, get_file_url)
 
-Use resources when you need to **read** file/image data. The `file_id` is obtained from part data (e.g., the `part/img-id` field).
+### File Tools
 
-### Tools (Operations)
-Tools perform operations that may have side effects:
-- Query and filter data (list_parts, list_storage_locations, etc.)
-- Create/update/delete records
-- Manage stock levels
-- Process orders
+Use the file tools to access part images and attachments:
+- `get_image(file_id)` - Download and render part images (use with `part/img-id` field)
+- `get_file(file_id)` - Download files (datasheets, PDFs)
+- `get_file_url(file_id)` - Get direct download URL without downloading
 
 ## Error Handling
 
@@ -267,20 +267,7 @@ async def get_part(part_id: str) -> PartResponse:
         raise ToolError(f"Failed to fetch part: {e}")
 ```
 
-Use `ResourceError` for resource failures:
-
-```python
-from fastmcp.exceptions import ResourceError
-
-@mcp.resource("partsbox://image/{file_id}")
-def image_resource(file_id: str) -> Image:
-    result = files.download_image_bytes(file_id)
-    if result.error:
-        raise ResourceError(result.error)
-    return Image(data=result.data, media_type=result.content_type)
-```
-
-When `PARTSBOX_MCP_MASK_ERRORS=true`, only `ToolError` and `ResourceError` messages are exposed to clients.
+When `PARTSBOX_MCP_MASK_ERRORS=true`, only `ToolError` messages are exposed to clients.
 
 ## Testing
 

@@ -1,8 +1,7 @@
 """
 PartsBox MCP Server - Main Entry Point
 
-This module sets up the FastMCP server and registers all tools and resources
-from the API modules.
+This module sets up the FastMCP server and registers all tools from the API modules.
 
 IMPORTANT DOCUMENTATION RULE:
 ================================================================================
@@ -26,7 +25,6 @@ import os
 from typing import Annotated, Any
 
 from fastmcp import FastMCP
-from fastmcp.exceptions import ResourceError
 from fastmcp.utilities.types import Image
 
 from partsbox_mcp.api import files, lots, orders, parts, projects, stock, storage
@@ -42,16 +40,9 @@ mask_errors = os.getenv("PARTSBOX_MCP_MASK_ERRORS", "false").lower() in ("true",
 mcp = FastMCP(
     name="PartsBox MCP Server",
     instructions="""
-    PartsBox MCP Server provides tools and resources for managing electronic component inventory.
+    PartsBox MCP Server provides tools for managing electronic component inventory.
 
-    ## Resources (Read-Only Data Access)
-
-    Use these URIs to access files and images:
-    - partsbox://image/{file_id} - Render part images directly
-    - partsbox://file/{file_id} - Download datasheets and files
-    - partsbox://file-url/{file_id} - Get download URL without fetching
-
-    ## Tools (Operations)
+    ## Tools
 
     Key capabilities organized by domain:
     - **Parts**: Create, update, delete, and search parts with JMESPath filtering
@@ -60,6 +51,7 @@ mcp = FastMCP(
     - **Storage**: Organize storage locations hierarchically with settings
     - **Projects**: Manage BOMs (Bills of Materials) and production builds
     - **Orders**: Track purchase orders from creation through receiving
+    - **Files**: Download part images and files, get file URLs
 
     ## JMESPath Queries
 
@@ -70,59 +62,68 @@ mcp = FastMCP(
     """,
     mask_error_details=mask_errors,
     on_duplicate_tools="error",
-    on_duplicate_resources="error",
 )
 
 
 # =============================================================================
-# Resources
+# Files Tools
 # =============================================================================
 
 
-@mcp.resource("partsbox://image/{file_id}")
-def image_resource(file_id: str) -> Image:
+@mcp.tool()
+def get_image(
+    file_id: Annotated[str, "File identifier from part data (part/img-id field)"],
+) -> Image:
     """
-    Download a part image for rendering in Claude Desktop.
+    Download a part image for display.
 
     The file_id is obtained from part data (e.g., the part/img-id field).
-    Use this resource to display images of electronic components.
+    Returns the image in a format suitable for display in Claude Desktop.
 
-    Example URI: partsbox://image/abc123def456
+    Args:
+        file_id: The file identifier from part data (part/img-id field)
+
+    Returns:
+        Image object for rendering in Claude Desktop
     """
-    result = files.download_image_bytes(file_id)
-    if result.error:
-        raise ResourceError(result.error)
-    return Image(data=result.data, media_type=result.content_type)
+    return files.get_image(file_id)
 
 
-@mcp.resource("partsbox://file/{file_id}")
-def file_resource(file_id: str) -> bytes:
+@mcp.tool()
+def get_file(
+    file_id: Annotated[str, "File identifier from part data"],
+) -> bytes:
     """
     Download a file (datasheet, image, etc.) from PartsBox.
 
     The file_id is obtained from part data. Returns binary content
     suitable for saving to disk or further processing.
 
-    Example URI: partsbox://file/abc123def456
+    Args:
+        file_id: The file identifier from part data
+
+    Returns:
+        Raw file bytes (base64-encoded in the response)
     """
-    result = files.download_file_bytes(file_id)
-    if result.error:
-        raise ResourceError(result.error)
-    return result.data
+    return files.get_file(file_id)
 
 
-@mcp.resource("partsbox://file-url/{file_id}")
-def file_url_resource(file_id: str) -> str:
+@mcp.tool()
+def get_file_url(
+    file_id: Annotated[str, "File identifier from part data"],
+) -> files.FileUrlResponse:
     """
     Get the download URL for a PartsBox file without downloading it.
 
-    Use this when you need the URL for external purposes (embedding,
-    sharing, or downloading via browser).
+    Use this when you need the URL for external purposes such as
+    embedding in documents, sharing, or downloading via a browser.
 
-    Example URI: partsbox://file-url/abc123def456
+    Args:
+        file_id: The file identifier from part data
+
+    Returns:
+        FileUrlResponse with the download URL
     """
-    if not file_id:
-        raise ResourceError("file_id is required")
     return files.get_file_url(file_id)
 
 
@@ -236,7 +237,7 @@ def list_parts(
         }
 
     See Also:
-        Use the partsbox://image/{file_id} resource to render part images (part/img-id) in Claude Desktop
+        Use the get_image tool with the part/img-id field value to display part images
     """
     return parts.list_parts(
         limit=limit,
@@ -320,7 +321,7 @@ def get_part(
         }
 
     See Also:
-        Use the partsbox://image/{file_id} resource to render part images (part/img-id) in Claude Desktop
+        Use the get_image tool with the part/img-id field value to display part images
     """
     return parts.get_part(part_id)
 

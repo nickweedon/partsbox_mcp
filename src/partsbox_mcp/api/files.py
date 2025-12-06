@@ -1,17 +1,17 @@
 """
 Files API module.
 
-Provides helper functions for file/attachment operations used by MCP resources:
-- download_file_bytes: Download raw file bytes
-- download_image_bytes: Download image bytes with content-type validation
+Provides tool functions for file and image operations:
+- get_image: Download a part image for display
+- get_file: Download a file (datasheet, image, etc.)
 - get_file_url: Get the download URL for a file
-
-These functions are used by MCP resource handlers in server.py.
 """
 
 from dataclasses import dataclass
 
 import requests
+from fastmcp.exceptions import ToolError
+from fastmcp.utilities.types import Image
 
 from partsbox_mcp.client import api_client
 
@@ -22,17 +22,16 @@ from partsbox_mcp.client import api_client
 
 
 @dataclass
-class RawFileData:
-    """Internal response for raw file bytes used by resources."""
+class FileUrlResponse:
+    """Response for file URL retrieval."""
 
-    data: bytes | None = None
-    content_type: str | None = None
-    filename: str | None = None
+    success: bool
+    url: str | None = None
     error: str | None = None
 
 
 # =============================================================================
-# Helper Functions for Resources
+# Internal Helper Functions
 # =============================================================================
 
 
@@ -56,22 +55,23 @@ def _extract_filename(headers: dict, file_id: str, content_type: str | None) -> 
     return filename
 
 
-def download_file_bytes(file_id: str) -> RawFileData:
+def _download_file_bytes(file_id: str) -> tuple[bytes, str | None, str | None]:
     """
     Download raw file bytes from PartsBox.
 
-    This is an internal helper function used by MCP resource handlers.
-    It fetches the file and returns raw bytes suitable for creating
-    FastMCP File or Image objects.
+    Internal helper that fetches file content.
 
     Args:
         file_id: The file identifier (obtained from part data)
 
     Returns:
-        RawFileData with raw bytes, content type, and filename
+        Tuple of (data, content_type, filename)
+
+    Raises:
+        ToolError: If the download fails
     """
     if not file_id:
-        return RawFileData(error="file_id is required")
+        raise ToolError("file_id is required")
 
     try:
         # Files are accessed via GET request to partsbox.com/files/{file_id}
@@ -83,49 +83,76 @@ def download_file_bytes(file_id: str) -> RawFileData:
         content_type = response.headers.get("Content-Type")
         filename = _extract_filename(response.headers, file_id, content_type)
 
-        return RawFileData(
-            data=response.content,
-            content_type=content_type,
-            filename=filename,
-        )
+        return response.content, content_type, filename
     except requests.RequestException as e:
-        return RawFileData(error=f"API request failed: {e}")
+        raise ToolError(f"Failed to download file: {e}")
 
 
-def download_image_bytes(file_id: str) -> RawFileData:
+# =============================================================================
+# Tool Functions
+# =============================================================================
+
+
+def get_image(file_id: str) -> Image:
     """
-    Download image bytes from PartsBox with content-type validation.
+    Download a part image for display.
 
-    This is an internal helper function used by the image resource handler.
-    It validates that the file is an image before returning the data.
+    The file_id is obtained from part data (e.g., the part/img-id field).
+    Returns the image in a format suitable for display in Claude Desktop.
 
     Args:
-        file_id: The file identifier (obtained from part data, e.g., part/img-id)
+        file_id: The file identifier from part data (part/img-id field)
 
     Returns:
-        RawFileData with image bytes if successful, or error if not an image
+        Image object for rendering in Claude Desktop
+
+    Raises:
+        ToolError: If the file is not an image or download fails
     """
-    result = download_file_bytes(file_id)
-    if result.error:
-        return result
+    data, content_type, _ = _download_file_bytes(file_id)
 
     # Validate that this is an image
-    if not result.content_type or not result.content_type.startswith("image/"):
-        return RawFileData(
-            error=f"File is not an image (content-type: {result.content_type})"
-        )
+    if not content_type or not content_type.startswith("image/"):
+        raise ToolError(f"File is not an image (content-type: {content_type})")
 
-    return result
+    # Extract format from content-type (e.g., "image/png" -> "png")
+    image_format = content_type.split("/")[-1].split(";")[0]
+
+    return Image(data=data, format=image_format)
 
 
-def get_file_url(file_id: str) -> str:
+def get_file(file_id: str) -> bytes:
     """
-    Get the download URL for a file in PartsBox.
+    Download a file (datasheet, image, etc.) from PartsBox.
+
+    The file_id is obtained from part data. Returns binary content
+    suitable for saving to disk or further processing.
 
     Args:
-        file_id: The file identifier (obtained from part data)
+        file_id: The file identifier from part data
 
     Returns:
-        The download URL for the file
+        Raw file bytes
     """
-    return f"https://partsbox.com/files/{file_id}"
+    data, _, _ = _download_file_bytes(file_id)
+    return data
+
+
+def get_file_url(file_id: str) -> FileUrlResponse:
+    """
+    Get the download URL for a PartsBox file without downloading it.
+
+    Use this when you need the URL for external purposes such as
+    embedding in documents, sharing, or downloading via a browser.
+
+    Args:
+        file_id: The file identifier from part data
+
+    Returns:
+        FileUrlResponse with the download URL
+    """
+    if not file_id:
+        return FileUrlResponse(success=False, error="file_id is required")
+
+    url = f"https://partsbox.com/files/{file_id}"
+    return FileUrlResponse(success=True, url=url)
