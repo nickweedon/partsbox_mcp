@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "partsbox": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "/path/to/your/.env:/workspace/.env:ro",
+        "-v",
+        "partsbox-blob-storage:/mnt/blob-storage",
+        "-e",
+        "PARTSBOX_BLOB_STORAGE_ROOT=/mnt/blob-storage",
+        "-e",
+        "PARTSBOX_BLOB_STORAGE_MAX_SIZE_MB=100",
+        "-e",
+        "PARTSBOX_BLOB_STORAGE_TTL_HOURS=24",
+        "partsbox-mcp:latest",
+        "uv",
+        "run",
+        "partsbox-mcp"
+      ]
+    }
+  }
+}

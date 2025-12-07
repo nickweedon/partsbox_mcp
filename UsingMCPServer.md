@@ -65,7 +65,7 @@ Replace `/path/to/your/.env` with the absolute path to your `.env` file:
 
 ### Configuration with Shared Resource Storage
 
-If you want to enable file sharing between multiple MCP servers through a mapped Docker volume, add the blob storage volume mount:
+If you want to enable file sharing between multiple MCP servers through a mapped Docker volume, add the blob storage volume mount and environment variables:
 
 ```json
 {
@@ -80,6 +80,12 @@ If you want to enable file sharing between multiple MCP servers through a mapped
         "/path/to/your/.env:/workspace/.env:ro",
         "-v",
         "partsbox-blob-storage:/mnt/blob-storage",
+        "-e",
+        "PARTSBOX_BLOB_STORAGE_ROOT=/mnt/blob-storage",
+        "-e",
+        "PARTSBOX_BLOB_STORAGE_MAX_SIZE_MB=100",
+        "-e",
+        "PARTSBOX_BLOB_STORAGE_TTL_HOURS=24",
         "partsbox-mcp:latest",
         "uv",
         "run",
@@ -91,6 +97,13 @@ If you want to enable file sharing between multiple MCP servers through a mapped
 ```
 
 This creates a Docker named volume `partsbox-blob-storage` that can be shared with other MCP servers. When using `get_image_resource` or `get_file_resource`, files will be stored in this shared location and can be accessed by other containers that mount the same volume.
+
+You can customize the blob storage behavior by adjusting the environment variables:
+- `PARTSBOX_BLOB_STORAGE_ROOT`: Path inside container (default: `/mnt/blob-storage`)
+- `PARTSBOX_BLOB_STORAGE_MAX_SIZE_MB`: Maximum file size in MB (default: `100`)
+- `PARTSBOX_BLOB_STORAGE_TTL_HOURS`: Time-to-live in hours (default: `24`)
+
+**Note:** A complete example configuration is available in [claude_desktop_config.json.example](claude_desktop_config.json.example).
 
 ## Claude Code (CLI)
 
@@ -138,6 +151,12 @@ For multi-container workflows that need to share files:
         "./.env:/workspace/.env:ro",
         "-v",
         "partsbox-blob-storage:/mnt/blob-storage",
+        "-e",
+        "PARTSBOX_BLOB_STORAGE_ROOT=/mnt/blob-storage",
+        "-e",
+        "PARTSBOX_BLOB_STORAGE_MAX_SIZE_MB=100",
+        "-e",
+        "PARTSBOX_BLOB_STORAGE_TTL_HOURS=24",
         "partsbox-mcp:latest",
         "uv",
         "run",
@@ -148,7 +167,7 @@ For multi-container workflows that need to share files:
 }
 ```
 
-This adds a shared Docker volume for blob storage. Other MCP servers can mount the same volume to access files created by `get_image_resource` and `get_file_resource`.
+This adds a shared Docker volume for blob storage with configurable environment variables. Other MCP servers can mount the same volume to access files created by `get_image_resource` and `get_file_resource`.
 
 ### Configuration Scopes
 

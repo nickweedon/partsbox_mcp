@@ -12,5 +12,13 @@ services:
       - PARTSBOX_API_KEY=${PARTSBOX_API_KEY}
       - PARTSBOX_MCP_DEBUG=true
       - PARTSBOX_MCP_MASK_ERRORS=false
+      - PARTSBOX_BLOB_STORAGE_ROOT=/mnt/blob-storage
+      - PARTSBOX_BLOB_STORAGE_MAX_SIZE_MB=100
+      - PARTSBOX_BLOB_STORAGE_TTL_HOURS=24
     env_file:
       - .env
+    volumes:
+      - blob-storage:/mnt/blob-storage
+
+volumes:
+  blob-storage:
