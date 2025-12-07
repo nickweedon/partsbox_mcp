@@ -229,6 +229,9 @@ uv run python partsbox_mcp_server.py
 | `PARTSBOX_API_KEY` | (required) | Your PartsBox API key (format: `partsboxapi_...`) |
 | `PARTSBOX_MCP_DEBUG` | `true` | Enable timing/logging middleware |
 | `PARTSBOX_MCP_MASK_ERRORS` | `false` | Hide internal error details from clients |
+| `PARTSBOX_BLOB_STORAGE_ROOT` | `/mnt/blob-storage` | Path to shared storage directory for resource files |
+| `PARTSBOX_BLOB_STORAGE_MAX_SIZE_MB` | `100` | Maximum file size in MB for blob storage |
+| `PARTSBOX_BLOB_STORAGE_TTL_HOURS` | `24` | Default time-to-live in hours for stored blobs |
 
 ## Tools
 
@@ -248,6 +251,28 @@ Use the file tools to access part images and attachments:
 - `get_image(file_id)` - Download and render part images (use with `part/img-id` field)
 - `get_file(file_id)` - Download files (datasheets, PDFs)
 - `get_file_url(file_id)` - Get direct download URL without downloading
+- `get_image_resource(file_id, ...)` - Store image in shared blob storage and return resource identifier
+- `get_file_resource(file_id, ...)` - Store file in shared blob storage and return resource identifier
+
+### Shared Resource Storage
+
+The `get_image_resource` and `get_file_resource` methods enable file sharing between MCP servers through mapped Docker volumes. This uses the `mcp_mapped_resource_lib` library to:
+
+1. Store files in a shared directory (`PARTSBOX_BLOB_STORAGE_ROOT`)
+2. Return unique resource identifiers (format: `blob://TIMESTAMP-HASH.EXT`)
+3. Enable other MCP servers to access files via the mapped volume
+4. Automatically deduplicate files using SHA256 hashing
+5. Clean up expired files based on TTL
+
+**Example workflow:**
+```python
+# Store an image in shared storage
+response = get_image_resource("img_capacitor_1uf")
+# Returns ResourceResponse with resource_id="blob://1733437200-a3f9d8c2.png"
+
+# Other MCP servers can access the file at:
+# /mnt/blob-storage/17/33/blob://1733437200-a3f9d8c2.png
+```
 
 ## Error Handling
 

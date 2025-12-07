@@ -51,7 +51,13 @@ mcp = FastMCP(
     - **Storage**: Organize storage locations hierarchically with settings
     - **Projects**: Manage BOMs (Bills of Materials) and production builds
     - **Orders**: Track purchase orders from creation through receiving
-    - **Files**: Download part images and files, get file URLs
+    - **Files**: Download part images and files, get file URLs, store in shared storage
+
+    ## File Sharing
+
+    Use get_image_resource() and get_file_resource() to store files in shared blob
+    storage accessible to other MCP servers through mapped Docker volumes. Files are
+    automatically deduplicated and expire after a configurable TTL.
 
     ## JMESPath Queries
 
@@ -189,6 +195,72 @@ def get_file_url(
         FileUrlResponse with the download URL
     """
     return files.get_file_url(file_id)
+
+
+@mcp.tool()
+def get_image_resource(
+    file_id: Annotated[str, "File identifier from part data (part/img-id field)"],
+    max_width: Annotated[
+        int | None,
+        "Maximum width in pixels (default: 1024, set to 0 with max_height=0 for original)",
+    ] = None,
+    max_height: Annotated[
+        int | None,
+        "Maximum height in pixels (default: 1024, set to 0 with max_width=0 for original)",
+    ] = None,
+    quality: Annotated[
+        int | None, "JPEG quality 1-100 (default: 85, only affects JPEG)"
+    ] = None,
+    ttl_hours: Annotated[
+        int | None, "Time-to-live in hours (default: 24)"
+    ] = None,
+) -> files.ResourceResponse:
+    """
+    Store an image in shared blob storage and return a resource identifier.
+
+    This enables other MCP servers to access the image file through a mapped
+    docker volume. The image is downloaded, optionally resized, and stored in
+    shared storage. Other services can access the file using the returned
+    resource identifier through the mapped volume.
+
+    Args:
+        file_id: The file identifier from part data (part/img-id field)
+        max_width: Maximum width in pixels. Default: 1024.
+        max_height: Maximum height in pixels. Default: 1024.
+        quality: JPEG compression quality (1-100). Default: 85.
+        ttl_hours: Time-to-live in hours. Default: 24.
+
+    Returns:
+        ResourceResponse with resource_id, filename, mime_type, size_bytes,
+        sha256 hash, and expires_at timestamp
+    """
+    return files.get_image_resource(file_id, max_width, max_height, quality, ttl_hours)
+
+
+@mcp.tool()
+def get_file_resource(
+    file_id: Annotated[str, "File identifier from part data"],
+    ttl_hours: Annotated[
+        int | None, "Time-to-live in hours (default: 24)"
+    ] = None,
+) -> files.ResourceResponse:
+    """
+    Store a file in shared blob storage and return a resource identifier.
+
+    This enables other MCP servers to access the file through a mapped docker
+    volume. The file is downloaded and stored in shared storage. Other services
+    can access the file using the returned resource identifier through the
+    mapped volume.
+
+    Args:
+        file_id: The file identifier from part data
+        ttl_hours: Time-to-live in hours. Default: 24.
+
+    Returns:
+        ResourceResponse with resource_id, filename, mime_type, size_bytes,
+        sha256 hash, and expires_at timestamp
+    """
+    return files.get_file_resource(file_id, ttl_hours)
 
 
 # =============================================================================

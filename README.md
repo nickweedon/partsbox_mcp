@@ -41,6 +41,9 @@ PARTSBOX_API_KEY=partsboxapi_your_api_key_here
 | `PARTSBOX_API_KEY` | (required) | Your PartsBox API key |
 | `PARTSBOX_MCP_DEBUG` | `true` | Enable timing/logging middleware |
 | `PARTSBOX_MCP_MASK_ERRORS` | `false` | Hide internal error details from clients |
+| `PARTSBOX_BLOB_STORAGE_ROOT` | `/mnt/blob-storage` | Path to shared storage directory for resource files |
+| `PARTSBOX_BLOB_STORAGE_MAX_SIZE_MB` | `100` | Maximum file size in MB for blob storage |
+| `PARTSBOX_BLOB_STORAGE_TTL_HOURS` | `24` | Default time-to-live in hours for stored blobs |
 
 ### 3. Run the server
 ```bash
@@ -157,6 +160,17 @@ The PartsBox API is operation-oriented (not REST) and provides:
 | `delete_order_entry` | Remove an item from an order |
 | `receive_order` | Process received inventory |
 
+### Files API
+| Tool | Description |
+|------|-------------|
+| `get_image` | Download a part image for display (with optional resizing) |
+| `get_image_info` | Get metadata about an image without downloading |
+| `get_image_size_estimate` | Estimate dimensions and size after resizing |
+| `get_file` | Download a file (datasheet, image, etc.) |
+| `get_file_url` | Get the download URL for a file |
+| `get_image_resource` | Store image in shared storage and return resource identifier |
+| `get_file_resource` | Store file in shared storage and return resource identifier |
+
 ## MCP Resources
 
 Resources provide read-only access to files and images via URI templates:
@@ -168,6 +182,71 @@ Resources provide read-only access to files and images via URI templates:
 | `partsbox://file-url/{file_id}` | Get the download URL without fetching the file |
 
 The `file_id` is obtained from part data (e.g., the `part/img-id` field returned by `get_part` or `list_parts`).
+
+## Shared Resource Storage
+
+The server provides resource-based file storage methods (`get_image_resource` and `get_file_resource`) that enable sharing files with other MCP servers through a mapped Docker volume. This is useful for multi-container workflows where files need to be passed between services.
+
+### How It Works
+
+1. Files are downloaded from PartsBox and stored in a shared blob storage directory
+2. Each file gets a unique resource identifier (format: `blob://TIMESTAMP-HASH.EXT`)
+3. Other MCP servers can access these files directly from the mapped volume using the identifier
+4. Files are automatically deduplicated using SHA256 hashing
+5. Files expire after a configurable TTL (default: 24 hours)
+
+### Configuration
+
+Configure shared storage using environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PARTSBOX_BLOB_STORAGE_ROOT` | `/mnt/blob-storage` | Path to shared storage directory |
+| `PARTSBOX_BLOB_STORAGE_MAX_SIZE_MB` | `100` | Maximum file size in MB |
+| `PARTSBOX_BLOB_STORAGE_TTL_HOURS` | `24` | Default time-to-live in hours |
+
+### Docker Volume Setup
+
+To enable resource sharing between MCP servers, mount a shared volume:
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  partsbox-mcp:
+    image: partsbox-mcp:latest
+    volumes:
+      - blob-storage:/mnt/blob-storage
+    environment:
+      - PARTSBOX_BLOB_STORAGE_ROOT=/mnt/blob-storage
+
+  other-mcp-server:
+    image: other-mcp:latest
+    volumes:
+      - blob-storage:/mnt/blob-storage
+
+volumes:
+  blob-storage:
+```
+
+### Usage Example
+
+```python
+# Store an image in shared storage
+response = get_image_resource("img_resistor_10k")
+# Returns: ResourceResponse(
+#   success=True,
+#   resource_id="blob://1733437200-a3f9d8c2b1e4f6a7.png",
+#   filename="img_resistor_10k.png",
+#   mime_type="image/png",
+#   size_bytes=65536,
+#   sha256="a3f9d8c2...",
+#   expires_at="2024-12-08T12:00:00Z"
+# )
+
+# Other MCP servers can now access the file at:
+# /mnt/blob-storage/17/33/blob://1733437200-a3f9d8c2b1e4f6a7.png
+```
 
 ## JMESPath Query Support
 

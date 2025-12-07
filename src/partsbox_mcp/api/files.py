@@ -7,15 +7,19 @@ Provides tool functions for file and image operations:
 - get_image_size_estimate: Estimate dimensions and size after resizing (dry run)
 - get_file: Download a file (datasheet, image, etc.)
 - get_file_url: Get the download URL for a file
+- get_image_resource: Store image in shared storage and return resource identifier
+- get_file_resource: Store file in shared storage and return resource identifier
 """
 
 import io
+import os
 import time
 from dataclasses import dataclass
 
 import requests
 from fastmcp.exceptions import ToolError
 from fastmcp.utilities.types import Image
+from mcp_mapped_resource_lib import BlobStorage
 from PIL import Image as PILImage
 
 from partsbox_mcp.client import api_client
@@ -30,6 +34,27 @@ DEFAULT_JPEG_QUALITY = 85  # Default JPEG quality (1-100)
 MIN_JPEG_QUALITY = 1
 MAX_JPEG_QUALITY = 100
 _IMAGE_CACHE_TTL = 300  # 5 minutes
+
+# Blob storage configuration
+BLOB_STORAGE_ROOT = os.environ.get("PARTSBOX_BLOB_STORAGE_ROOT", "/mnt/blob-storage")
+BLOB_STORAGE_MAX_SIZE_MB = int(os.environ.get("PARTSBOX_BLOB_STORAGE_MAX_SIZE_MB", "100"))
+BLOB_STORAGE_TTL_HOURS = int(os.environ.get("PARTSBOX_BLOB_STORAGE_TTL_HOURS", "24"))
+
+# Lazy initialization of blob storage
+_blob_storage: BlobStorage | None = None
+
+
+def _get_blob_storage() -> BlobStorage:
+    """Get or create the blob storage instance."""
+    global _blob_storage
+    if _blob_storage is None:
+        _blob_storage = BlobStorage(
+            storage_root=BLOB_STORAGE_ROOT,
+            max_size_mb=BLOB_STORAGE_MAX_SIZE_MB,
+            default_ttl_hours=BLOB_STORAGE_TTL_HOURS,
+            enable_deduplication=True,
+        )
+    return _blob_storage
 
 
 # =============================================================================
@@ -72,6 +97,20 @@ class ImageSizeEstimate:
     would_resize: bool = False
     format: str | None = None
     quality: int | None = None
+    error: str | None = None
+
+
+@dataclass
+class ResourceResponse:
+    """Response for resource-based file/image storage."""
+
+    success: bool
+    resource_id: str | None = None
+    filename: str | None = None
+    mime_type: str | None = None
+    size_bytes: int | None = None
+    sha256: str | None = None
+    expires_at: str | None = None
     error: str | None = None
 
 
@@ -568,3 +607,181 @@ def get_file_url(file_id: str) -> FileUrlResponse:
 
     url = f"https://partsbox.com/files/{file_id}"
     return FileUrlResponse(success=True, url=url)
+
+
+def get_image_resource(
+    file_id: str,
+    max_width: int | None = None,
+    max_height: int | None = None,
+    quality: int | None = None,
+    ttl_hours: int | None = None,
+) -> ResourceResponse:
+    """
+    Download an image and store it in shared blob storage, returning a resource identifier.
+
+    This method enables other MCP servers to access the image file through a mapped
+    docker volume. The image is stored in the shared storage location and a unique
+    resource identifier is returned. Other services can use this identifier to directly
+    access the file from the mapped volume.
+
+    The image is automatically resized following the same rules as get_image().
+
+    Args:
+        file_id: The file identifier from part data (part/img-id field)
+        max_width: Maximum width in pixels. Default: 1024. Set to 0 with max_height=0
+                   to disable resizing.
+        max_height: Maximum height in pixels. Default: 1024. Set to 0 with max_width=0
+                    to disable resizing.
+        quality: JPEG compression quality (1-100). Default: 85. Only applies to JPEG
+                 images; ignored for PNG/GIF/WebP.
+        ttl_hours: Time-to-live in hours. Default: 24. After this time, the blob may
+                   be cleaned up from storage.
+
+    Returns:
+        ResourceResponse with:
+        - success: Whether the operation succeeded
+        - resource_id: Unique identifier for the stored blob (format: blob://TIMESTAMP-HASH.EXT)
+        - filename: Original or generated filename
+        - mime_type: MIME type of the stored image
+        - size_bytes: Size of the stored image in bytes
+        - sha256: SHA256 hash of the image data (for deduplication)
+        - expires_at: ISO 8601 timestamp when the blob expires
+        - error: Error message if unsuccessful
+
+    Raises:
+        ToolError: If the file is not an image, download fails, quality is invalid,
+                   or storage operation fails
+
+    Example:
+        # Store image with default settings
+        response = get_image_resource("img_resistor_10k")
+        # ResourceResponse(success=True, resource_id="blob://1733437200-a3f9d8c2b1e4f6a7.png",
+        #                  filename="img_resistor_10k.png", mime_type="image/png",
+        #                  size_bytes=65536, sha256="a3f9d8c2...", expires_at="2024-12-07T12:00:00Z")
+
+        # Store smaller thumbnail
+        response = get_image_resource("img_resistor_10k", max_width=256, max_height=256)
+
+        # Store with custom TTL
+        response = get_image_resource("img_resistor_10k", ttl_hours=48)
+    """
+    try:
+        _validate_quality(quality)
+
+        # Download and optionally resize the image
+        data, content_type, filename = _download_image_cached(file_id)
+
+        # Validate that this is an image
+        if not content_type or not content_type.startswith("image/"):
+            raise ToolError(f"File is not an image (content-type: {content_type})")
+
+        # Extract format from content-type
+        image_format = content_type.split("/")[-1].split(";")[0]
+
+        # Resize the image
+        resized_data, _, _ = _resize_image(data, image_format, max_width, max_height, quality)
+
+        # Generate filename if not provided
+        if not filename:
+            filename = f"{file_id}.{image_format}"
+
+        # Store in blob storage
+        storage = _get_blob_storage()
+        result = storage.upload_blob(
+            data=resized_data,
+            filename=filename,
+            tags=["partsbox", "image", file_id],
+            ttl_hours=ttl_hours,
+        )
+
+        return ResourceResponse(
+            success=True,
+            resource_id=result["blob_id"],
+            filename=result["filename"],
+            mime_type=result["mime_type"],
+            size_bytes=result["size_bytes"],
+            sha256=result["sha256"],
+            expires_at=result["expires_at"],
+        )
+
+    except ToolError:
+        raise
+    except Exception as e:
+        raise ToolError(f"Failed to create image resource: {e}")
+
+
+def get_file_resource(
+    file_id: str,
+    ttl_hours: int | None = None,
+) -> ResourceResponse:
+    """
+    Download a file and store it in shared blob storage, returning a resource identifier.
+
+    This method enables other MCP servers to access the file through a mapped docker
+    volume. The file is stored in the shared storage location and a unique resource
+    identifier is returned. Other services can use this identifier to directly access
+    the file from the mapped volume.
+
+    Args:
+        file_id: The file identifier from part data
+        ttl_hours: Time-to-live in hours. Default: 24. After this time, the blob may
+                   be cleaned up from storage.
+
+    Returns:
+        ResourceResponse with:
+        - success: Whether the operation succeeded
+        - resource_id: Unique identifier for the stored blob (format: blob://TIMESTAMP-HASH.EXT)
+        - filename: Original or generated filename
+        - mime_type: MIME type of the stored file
+        - size_bytes: Size of the stored file in bytes
+        - sha256: SHA256 hash of the file data (for deduplication)
+        - expires_at: ISO 8601 timestamp when the blob expires
+        - error: Error message if unsuccessful
+
+    Raises:
+        ToolError: If download fails or storage operation fails
+
+    Example:
+        # Store file with default settings
+        response = get_file_resource("datasheet_resistor_10k")
+        # ResourceResponse(success=True, resource_id="blob://1733437200-b4e8d9c3a2f5e7b6.pdf",
+        #                  filename="datasheet_resistor_10k.pdf", mime_type="application/pdf",
+        #                  size_bytes=524288, sha256="b4e8d9c3...", expires_at="2024-12-07T12:00:00Z")
+
+        # Store with custom TTL
+        response = get_file_resource("datasheet_resistor_10k", ttl_hours=72)
+    """
+    try:
+        # Download the file
+        data, content_type, filename = _download_file_bytes(file_id)
+
+        # Generate filename if not provided
+        if not filename:
+            ext = "bin"
+            if content_type:
+                ext = content_type.split("/")[-1].split(";")[0]
+            filename = f"{file_id}.{ext}"
+
+        # Store in blob storage
+        storage = _get_blob_storage()
+        result = storage.upload_blob(
+            data=data,
+            filename=filename,
+            tags=["partsbox", "file", file_id],
+            ttl_hours=ttl_hours,
+        )
+
+        return ResourceResponse(
+            success=True,
+            resource_id=result["blob_id"],
+            filename=result["filename"],
+            mime_type=result["mime_type"],
+            size_bytes=result["size_bytes"],
+            sha256=result["sha256"],
+            expires_at=result["expires_at"],
+        )
+
+    except ToolError:
+        raise
+    except Exception as e:
+        raise ToolError(f"Failed to create file resource: {e}")
