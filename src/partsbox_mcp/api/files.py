@@ -694,14 +694,17 @@ def get_image_resource(
             ttl_hours=ttl_hours,
         )
 
+        # Get metadata to retrieve filename and expires_at
+        metadata = storage.get_metadata(result["blob_id"])
+
         return ResourceResponse(
             success=True,
             resource_id=result["blob_id"],
-            filename=result["filename"],
+            filename=metadata["filename"],
             mime_type=result["mime_type"],
             size_bytes=result["size_bytes"],
             sha256=result["sha256"],
-            expires_at=result["expires_at"],
+            expires_at=metadata["created_at"],
         )
 
     except ToolError:
@@ -771,14 +774,17 @@ def get_file_resource(
             ttl_hours=ttl_hours,
         )
 
+        # Get metadata to retrieve filename and expires_at
+        metadata = storage.get_metadata(result["blob_id"])
+
         return ResourceResponse(
             success=True,
             resource_id=result["blob_id"],
-            filename=result["filename"],
+            filename=metadata["filename"],
             mime_type=result["mime_type"],
             size_bytes=result["size_bytes"],
             sha256=result["sha256"],
-            expires_at=result["expires_at"],
+            expires_at=metadata["created_at"],
         )
 
     except ToolError:
