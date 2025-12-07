@@ -1,5 +1,8 @@
 FROM python:3.12-slim
 
+# Upgrade pip to the latest version
+RUN python -m pip install --upgrade pip
+
 # Install essential packages for development and VS Code remote containers
 RUN apt-get update && \
     apt-get install -y \
