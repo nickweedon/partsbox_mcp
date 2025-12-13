@@ -9,6 +9,10 @@ Provides tool functions for file and image operations:
 - get_file_url: Get the download URL for a file
 - get_image_resource: Store image in shared storage and return resource identifier
 - get_file_resource: Store file in shared storage and return resource identifier
+
+Note: The resource methods (get_image_resource, get_file_resource) store raw files
+in shared blob storage. Use the 'Resource MCP Server' to retrieve and manipulate
+the stored resources (resize images, etc.).
 """
 
 import io
@@ -611,36 +615,28 @@ def get_file_url(file_id: str) -> FileUrlResponse:
 
 def get_image_resource(
     file_id: str,
-    max_width: int | None = None,
-    max_height: int | None = None,
-    quality: int | None = None,
     ttl_hours: int | None = None,
 ) -> ResourceResponse:
     """
-    Download an image and store it in shared blob storage, returning a resource identifier.
+    Download an image from PartsBox and store in shared blob storage.
 
-    This method enables other MCP servers to access the image file through a mapped
-    docker volume. The image is stored in the shared storage location and a unique
-    resource identifier is returned. Other services can use this identifier to directly
-    access the file from the mapped volume.
+    Downloads the original full-resolution image and stores it in the shared
+    blob storage volume. Returns a resource identifier that can be used with
+    the 'Resource MCP Server' to retrieve, resize, or manipulate the image.
 
-    The image is automatically resized following the same rules as get_image().
+    IMPORTANT: To retrieve or resize the stored image, use the 'Resource MCP Server'
+    tools (get_image, get_image_info, etc.) with the returned resource_id.
 
     Args:
         file_id: The file identifier from part data (part/img-id field)
-        max_width: Maximum width in pixels. Default: 1024. Set to 0 with max_height=0
-                   to disable resizing.
-        max_height: Maximum height in pixels. Default: 1024. Set to 0 with max_width=0
-                    to disable resizing.
-        quality: JPEG compression quality (1-100). Default: 85. Only applies to JPEG
-                 images; ignored for PNG/GIF/WebP.
         ttl_hours: Time-to-live in hours. Default: 24. After this time, the blob may
                    be cleaned up from storage.
 
     Returns:
         ResourceResponse with:
         - success: Whether the operation succeeded
-        - resource_id: Unique identifier for the stored blob (format: blob://TIMESTAMP-HASH.EXT)
+        - resource_id: Unique identifier for the stored blob (format: blob://TIMESTAMP-HASH.EXT).
+          Use this with 'Resource MCP Server' to retrieve/resize the image.
         - filename: Original or generated filename
         - mime_type: MIME type of the stored image
         - size_bytes: Size of the stored image in bytes
@@ -649,26 +645,18 @@ def get_image_resource(
         - error: Error message if unsuccessful
 
     Raises:
-        ToolError: If the file is not an image, download fails, quality is invalid,
-                   or storage operation fails
+        ToolError: If the file is not an image, download fails, or storage operation fails
 
     Example:
-        # Store image with default settings
+        # Store image in shared storage
         response = get_image_resource("img_resistor_10k")
-        # ResourceResponse(success=True, resource_id="blob://1733437200-a3f9d8c2b1e4f6a7.png",
-        #                  filename="img_resistor_10k.png", mime_type="image/png",
-        #                  size_bytes=65536, sha256="a3f9d8c2...", expires_at="2024-12-07T12:00:00Z")
+        # ResourceResponse(success=True, resource_id="blob://1733437200-a3f9d8c2b1e4f6a7.png", ...)
 
-        # Store smaller thumbnail
-        response = get_image_resource("img_resistor_10k", max_width=256, max_height=256)
-
-        # Store with custom TTL
-        response = get_image_resource("img_resistor_10k", ttl_hours=48)
+        # Then use 'Resource MCP Server' to retrieve/resize:
+        # get_image(resource_id, max_width=256, max_height=256)
     """
     try:
-        _validate_quality(quality)
-
-        # Download and optionally resize the image
+        # Download the image
         data, content_type, filename = _download_image_cached(file_id)
 
         # Validate that this is an image
@@ -678,17 +666,14 @@ def get_image_resource(
         # Extract format from content-type
         image_format = content_type.split("/")[-1].split(";")[0]
 
-        # Resize the image
-        resized_data, _, _ = _resize_image(data, image_format, max_width, max_height, quality)
-
         # Generate filename if not provided
         if not filename:
             filename = f"{file_id}.{image_format}"
 
-        # Store in blob storage
+        # Store in blob storage (original, unresized)
         storage = _get_blob_storage()
         result = storage.upload_blob(
-            data=resized_data,
+            data=data,
             filename=filename,
             tags=["partsbox", "image", file_id],
             ttl_hours=ttl_hours,
@@ -718,12 +703,14 @@ def get_file_resource(
     ttl_hours: int | None = None,
 ) -> ResourceResponse:
     """
-    Download a file and store it in shared blob storage, returning a resource identifier.
+    Download a file from PartsBox and store in shared blob storage.
 
-    This method enables other MCP servers to access the file through a mapped docker
-    volume. The file is stored in the shared storage location and a unique resource
-    identifier is returned. Other services can use this identifier to directly access
-    the file from the mapped volume.
+    Downloads the file (datasheet, document, etc.) and stores it in the shared
+    blob storage volume. Returns a resource identifier that can be used with
+    the 'Resource MCP Server' to retrieve the file.
+
+    IMPORTANT: To retrieve the stored file, use the 'Resource MCP Server'
+    tools (get_file, get_file_url, etc.) with the returned resource_id.
 
     Args:
         file_id: The file identifier from part data
@@ -733,7 +720,8 @@ def get_file_resource(
     Returns:
         ResourceResponse with:
         - success: Whether the operation succeeded
-        - resource_id: Unique identifier for the stored blob (format: blob://TIMESTAMP-HASH.EXT)
+        - resource_id: Unique identifier for the stored blob (format: blob://TIMESTAMP-HASH.EXT).
+          Use this with 'Resource MCP Server' to retrieve the file.
         - filename: Original or generated filename
         - mime_type: MIME type of the stored file
         - size_bytes: Size of the stored file in bytes
@@ -745,14 +733,12 @@ def get_file_resource(
         ToolError: If download fails or storage operation fails
 
     Example:
-        # Store file with default settings
+        # Store file in shared storage
         response = get_file_resource("datasheet_resistor_10k")
-        # ResourceResponse(success=True, resource_id="blob://1733437200-b4e8d9c3a2f5e7b6.pdf",
-        #                  filename="datasheet_resistor_10k.pdf", mime_type="application/pdf",
-        #                  size_bytes=524288, sha256="b4e8d9c3...", expires_at="2024-12-07T12:00:00Z")
+        # ResourceResponse(success=True, resource_id="blob://1733437200-b4e8d9c3a2f5e7b6.pdf", ...)
 
-        # Store with custom TTL
-        response = get_file_resource("datasheet_resistor_10k", ttl_hours=72)
+        # Then use 'Resource MCP Server' to retrieve:
+        # get_file(resource_id)
     """
     try:
         # Download the file

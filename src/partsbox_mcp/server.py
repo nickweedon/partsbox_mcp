@@ -200,41 +200,30 @@ def get_file_url(
 @mcp.tool()
 def get_image_resource(
     file_id: Annotated[str, "File identifier from part data (part/img-id field)"],
-    max_width: Annotated[
-        int | None,
-        "Maximum width in pixels (default: 1024, set to 0 with max_height=0 for original)",
-    ] = None,
-    max_height: Annotated[
-        int | None,
-        "Maximum height in pixels (default: 1024, set to 0 with max_width=0 for original)",
-    ] = None,
-    quality: Annotated[
-        int | None, "JPEG quality 1-100 (default: 85, only affects JPEG)"
-    ] = None,
     ttl_hours: Annotated[
         int | None, "Time-to-live in hours (default: 24)"
     ] = None,
 ) -> files.ResourceResponse:
     """
-    Store an image in shared blob storage and return a resource identifier.
+    Download an image from PartsBox and store in shared blob storage.
 
-    This enables other MCP servers to access the image file through a mapped
-    docker volume. The image is downloaded, optionally resized, and stored in
-    shared storage. Other services can access the file using the returned
-    resource identifier through the mapped volume.
+    Downloads the original full-resolution image and stores it in the shared
+    blob storage volume. Returns a resource identifier that can be used with
+    the 'Resource MCP Server' to retrieve, resize, or manipulate the image.
+
+    IMPORTANT: To retrieve or resize the stored image, use the 'Resource MCP Server'
+    tools (get_image, get_image_info, etc.) with the returned resource_id.
 
     Args:
         file_id: The file identifier from part data (part/img-id field)
-        max_width: Maximum width in pixels. Default: 1024.
-        max_height: Maximum height in pixels. Default: 1024.
-        quality: JPEG compression quality (1-100). Default: 85.
         ttl_hours: Time-to-live in hours. Default: 24.
 
     Returns:
         ResourceResponse with resource_id, filename, mime_type, size_bytes,
-        sha256 hash, and expires_at timestamp
+        sha256 hash, and expires_at timestamp. Use the resource_id with
+        'Resource MCP Server' to access the stored image.
     """
-    return files.get_image_resource(file_id, max_width, max_height, quality, ttl_hours)
+    return files.get_image_resource(file_id, ttl_hours)
 
 
 @mcp.tool()
@@ -245,12 +234,14 @@ def get_file_resource(
     ] = None,
 ) -> files.ResourceResponse:
     """
-    Store a file in shared blob storage and return a resource identifier.
+    Download a file from PartsBox and store in shared blob storage.
 
-    This enables other MCP servers to access the file through a mapped docker
-    volume. The file is downloaded and stored in shared storage. Other services
-    can access the file using the returned resource identifier through the
-    mapped volume.
+    Downloads the file (datasheet, document, etc.) and stores it in the shared
+    blob storage volume. Returns a resource identifier that can be used with
+    the 'Resource MCP Server' to retrieve the file.
+
+    IMPORTANT: To retrieve the stored file, use the 'Resource MCP Server'
+    tools (get_file, get_file_url, etc.) with the returned resource_id.
 
     Args:
         file_id: The file identifier from part data
@@ -258,7 +249,8 @@ def get_file_resource(
 
     Returns:
         ResourceResponse with resource_id, filename, mime_type, size_bytes,
-        sha256 hash, and expires_at timestamp
+        sha256 hash, and expires_at timestamp. Use the resource_id with
+        'Resource MCP Server' to access the stored file.
     """
     return files.get_file_resource(file_id, ttl_hours)
 

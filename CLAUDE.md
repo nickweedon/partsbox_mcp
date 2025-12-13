@@ -251,27 +251,30 @@ Use the file tools to access part images and attachments:
 - `get_image(file_id)` - Download and render part images (use with `part/img-id` field)
 - `get_file(file_id)` - Download files (datasheets, PDFs)
 - `get_file_url(file_id)` - Get direct download URL without downloading
-- `get_image_resource(file_id, ...)` - Store image in shared blob storage and return resource identifier
-- `get_file_resource(file_id, ...)` - Store file in shared blob storage and return resource identifier
+- `get_image_resource(file_id)` - Store image in shared blob storage and return resource identifier
+- `get_file_resource(file_id)` - Store file in shared blob storage and return resource identifier
 
 ### Shared Resource Storage
 
-The `get_image_resource` and `get_file_resource` methods enable file sharing between MCP servers through mapped Docker volumes. This uses the `mcp_mapped_resource_lib` library to:
+The `get_image_resource` and `get_file_resource` methods download files from PartsBox and store them in shared blob storage for access by other MCP servers. This uses the `mcp_mapped_resource_lib` library to:
 
-1. Store files in a shared directory (`PARTSBOX_BLOB_STORAGE_ROOT`)
+1. Store raw/original files in a shared directory (`PARTSBOX_BLOB_STORAGE_ROOT`)
 2. Return unique resource identifiers (format: `blob://TIMESTAMP-HASH.EXT`)
-3. Enable other MCP servers to access files via the mapped volume
+3. Enable the 'Resource MCP Server' to access and manipulate files via the mapped volume
 4. Automatically deduplicate files using SHA256 hashing
 5. Clean up expired files based on TTL
 
+**IMPORTANT:** To retrieve or manipulate stored resources (e.g., resize images), use the 'Resource MCP Server' tools with the returned `resource_id`.
+
 **Example workflow:**
 ```python
-# Store an image in shared storage
+# 1. Store an image from PartsBox in shared storage
 response = get_image_resource("img_capacitor_1uf")
 # Returns ResourceResponse with resource_id="blob://1733437200-a3f9d8c2.png"
 
-# Other MCP servers can access the file at:
-# /mnt/blob-storage/17/33/blob://1733437200-a3f9d8c2.png
+# 2. Use 'Resource MCP Server' to retrieve/resize the image:
+# get_image(resource_id, max_width=512, max_height=512)
+# get_image_info(resource_id)
 ```
 
 ## Error Handling
